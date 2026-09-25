@@ -61,10 +61,12 @@ if (getattr(sys, "frozen", False)
             except OSError:
                 pass
 
-APP_VERSION = "5.4.0"
-PILL_W, PILL_H = 150, 38    # expanded (recording/processing)
+APP_VERSION = "5.5.0"
+# Recording is BIG now (5.5): the flowing waveform needs length to read as a
+# voice rather than a squiggle. Idle stays tiny and out of the way.
+PILL_W, PILL_H = 220, 44    # expanded (recording/processing)
 MINI_W, MINI_H = 76, 16     # idle: the edge tab, flush to the docked edge
-HOVER_W, HOVER_H = 190, 46  # hovered: status text + cancel / open controls
+HOVER_W, HOVER_H = 240, 48  # hovered: must CONTAIN the recording bar on both axes
 PANEL_W, PANEL_H = 232, 150  # expanded popup: status + dock picker
 # Docked to a side everything stands up â€” including HOVER. A wide hover box
 # on a side dock was shorter than the upright bar it grew from, so the window
@@ -72,9 +74,9 @@ PANEL_W, PANEL_H = 232, 150  # expanded popup: status + dock picker
 # shrank back, the cursor was inside again, mouseenter fired. That loop is
 # what made the side buttons unclickable. Every grown size below CONTAINS
 # the size it grows from, on both axes â€” see _grow_to_contain.
-VPILL_W, VPILL_H = 38, 150
+VPILL_W, VPILL_H = 44, 220
 VMINI_W, VMINI_H = 16, 76
-VHOVER_W, VHOVER_H = 54, 178
+VHOVER_W, VHOVER_H = 56, 240
 PILL_PAD = 0                # flush: the tab is a handle ON the edge
 DOCKS = ("left", "bottom", "right")
 PILL_BG = "#171320"  # warm plum-black â€” matches the app's dark identity

@@ -479,6 +479,54 @@ body.moving #failwash{opacity:0;transition:opacity .1s}
 body.moving{box-shadow:inset 0 0 0 1px rgba(247,244,236,.16),
 inset 0 0 20px rgba(108,85,232,.35)}
 
+/* ==== 5.5 THE FLOWING WAVE =============================================
+   The bar is now waveform-first: the voice IS the display. Idle is a thin
+   line with a faint ripple; recording is a flowing wave that follows the
+   voice and flattens to a line in silence; processing lets the same wave
+   slow and settle. Overrides the filament/teeth rules above by source order. */
+
+/* -- idle: the rippling line -- */
+#core{width:34px;height:10px;border-radius:0;background:none;box-shadow:none;
+overflow:hidden;
+-webkit-mask:linear-gradient(90deg,transparent,#000 28%,#000 72%,transparent);
+mask:linear-gradient(90deg,transparent,#000 28%,#000 72%,transparent)}
+#core::before{display:none}
+#core .ripwrap{position:absolute;left:0;top:0;width:34px;height:10px}
+#ripple{position:absolute;left:0;top:0;display:block;overflow:visible;
+filter:drop-shadow(0 0 2.5px var(--fglow));
+animation:ripple 3.4s linear infinite,breathe 7.4s ease-in-out infinite;
+will-change:transform}
+#ripple path{fill:none;stroke:var(--f3);stroke-width:1.7;stroke-linecap:round}
+/* one wavelength (17 units) per loop, so the seam never shows */
+@keyframes ripple{from{transform:translateX(0)}to{transform:translateX(-17px)}}
+@keyframes breathe{0%,100%{opacity:.78}50%{opacity:1}}
+/* warming: the line dims and the shuttle runs over it */
+body.eng-warm #ripple{opacity:.22;animation:ripple 3.4s linear infinite}
+/* offline: a dead red line - no ripple at all */
+body.eng-fail #ripple{animation:none;opacity:.8}
+/* hover: stretch the whole line toward the bar it is about to become */
+body.tab:hover #ripple{filter:drop-shadow(0 0 4px var(--fglow))}
+/* upright: the same line, turned to run with the screen edge */
+body.vert #core{width:10px;height:34px;
+-webkit-mask:linear-gradient(180deg,transparent,#000 28%,#000 72%,transparent);
+mask:linear-gradient(180deg,transparent,#000 28%,#000 72%,transparent)}
+body.vert #core .ripwrap{left:-12px;top:12px;transform:rotate(90deg)}
+
+/* -- recording: the canvas wave -- */
+#rec-l{gap:10px;padding:0 12px}
+#t{font-size:16px}
+#wave{display:block;height:34px;background:none;
+-webkit-mask:none;mask:none;overflow:visible;animation:fadeIn .2s ease-out both}
+body.rec:not(.hearing) #wave{filter:none}
+#wavec{display:block;width:100%;height:100%}
+body.vert #rec-l{padding:12px 0;gap:8px}
+body.vert #wave{width:34px;height:auto;flex:1;min-height:0}
+body.vert #t{font-size:13px}
+/* processing reuses the recording layer, so the wave carries straight on
+   and settles - no cut to a different object */
+body.processing #t{font-size:11px;font-weight:600;color:#B8A8F0;letter-spacing:.04em}
+body.processing #tmode{display:none}
+
 /* ==== STATE VISIBILITY =================================================
    Every rule below is exactly one class + one id, resolved by source order.
    Do not reorder, and do not add a second class. */
@@ -486,7 +534,8 @@ inset 0 0 20px rgba(108,85,232,.35)}
 body.mini #core-l{display:flex}
 body.rec #rec-l{display:flex}
 body.rec #recwash{display:block}
-body.processing #proc-l{display:flex}
+body.processing #rec-l{display:flex}
+body.flash #rec-l{display:none}
 body.flash #proc-l{display:flex}
 body.flash #flashrim{display:block}
 body.flash #recap{display:flex}
@@ -520,12 +569,21 @@ body.hov #hov-l{display:flex}
  body.eng-warm #eng-bar{display:block;animation:engBarH 3s linear infinite!important}
  .pbtn,#grip,#dock button,#dock button i,#wave i,#recwash{transition:none}
  #wave-track{transform:none!important}
+ /* the idle line holds still; the wave still follows the voice (it is the
+    level meter) but stops drifting - see `reduced` in the script */
+ #ripple{animation:none!important;opacity:1!important}
  #undo-bar{animation:none!important}
 }
 </style></head><body class="mini tab dock-bottom">
 <div id="recwash"></div><div id="flashrim"></div><div id="failwash"></div>
 
-<div class="layer" id="core-l" data-od-id="idle-layer"><div id="core"></div></div>
+<div class="layer" id="core-l" data-od-id="idle-layer"><div id="core">
+ <!-- a thin line with a slow, faint ripple. The SVG is twice the visible
+      width and is translated one wavelength per loop, so the motion is a
+      compositor transform - no repaint, no frame loop. -->
+ <div class="ripwrap"><svg id="ripple" width="68" height="10" viewBox="0 0 68 10" aria-hidden="true">
+  <path d="M0 5 Q4.25 2.6 8.5 5 T17 5 T25.5 5 T34 5 T42.5 5 T51 5 T59.5 5 T68 5"/></svg></div>
+</div></div>
 
 <div class="layer" id="rec-l" data-od-id="recording-layer">
  <!-- where this take goes: shown only when it is NOT a plain dictation -->
@@ -539,7 +597,7 @@ body.hov #hov-l{display:flex}
    <path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>
  </i>
  <div id="t">0:00</div>
- <div id="wave" data-od-id="level-history"></div>
+ <div id="wave" data-od-id="level-history"><canvas id="wavec"></canvas></div>
  <!-- overlays that briefly take the ribbon's place -->
  <div id="esc-hint" data-od-id="esc-hint">Esc again to discard</div>
  <div id="micflash" data-od-id="mic-flash"></div>
@@ -640,23 +698,28 @@ let escUntil=0,micUntil=0,morphUntil=0;
 let hasLast=false,lastBlind=false,ending=false,isLight=false;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---- the level history ribbon ----
-   16 samples at 130ms = 2.08s of the recent past on screen. 16 teeth of
-   2px plus 15 gaps of 3px is 77px, which still fits the ~81px the ribbon
-   is left with at 150x38 once a two-digit-minute clock has taken its
-   share. One EXTRA tooth rides just outside the leading edge: it is the live
-   sample, sliding in as the track glides (see drawWave). */
-const NB=16,SHIFT=130,MAXH=20,MAXV=24,PITCH=5;
+/* ---- the flowing wave ----
+   A continuous waveform drawn on a canvas. Its LOUDNESS along the length is
+   the last ~3s of the voice (24 samples x 130ms, newest at the leading
+   edge), so a pause still shows as a flat stretch drifting away; the wave
+   itself flows through that envelope, faster when he is louder. */
+const NB=24,SHIFT=130;
 const hist=new Array(NB+1).fill(0);
 const quietRaw=new Array(NB+1).fill(true);
 const hot=new Array(NB+1).fill(false);
 let shiftAt=0;
 const root=document.documentElement;
 const wave=document.getElementById('wave');
-const track=document.createElement('div');
-track.id='wave-track';wave.appendChild(track);
-const bars=[];
-for(let i=0;i<=NB;i++){const b=document.createElement('i');track.appendChild(b);bars.push(b);}
+const cv=document.getElementById('wavec'),cx=cv.getContext('2d');
+let cw=0,ch=0,dpr=1,phase=0,settle=0,wtime=0;
+function fitCanvas(){
+ const r=cv.getBoundingClientRect();
+ dpr=window.devicePixelRatio||1;
+ const w=Math.max(1,Math.round(r.width*dpr)),h=Math.max(1,Math.round(r.height*dpr));
+ if(w!==cw||h!==ch){cw=cv.width=w;ch=cv.height=h;}
+}
+/* the window is resized by Python while it animates between states */
+new ResizeObserver(fitCanvas).observe(cv);
 const pd=document.getElementById('pdots');
 for(let i=0;i<3;i++)pd.appendChild(document.createElement('i'));
 const elT=document.getElementById('t');
@@ -813,8 +876,7 @@ function setPanel(on){
 }
 function resetWave(){
  for(let i=0;i<=NB;i++){hist[i]=0;quietRaw[i]=true;hot[i]=false;}
- shiftAt=0;
- for(const b of bars){b.style.transition='';b._q=b._h=undefined;}
+ shiftAt=0;settle=0;
 }
 function renderRecap(){
  /* the paste went nowhere (desktop or taskbar had focus): the receipt
@@ -828,19 +890,6 @@ function renderRecap(){
  recap.classList.toggle('bare',!has);
  rcN.textContent=has?String(lastWords):'Done';
  rcW.textContent=lastWpm?lastWpm+' wpm':'';
-}
-/* recording -> processing: roll the teeth down newest-first, then let the
-   writing dots rise. Transform only. */
-function morphOut(){
- if(reduced)return;
- morphUntil=performance.now()+380;
- const s=vertical?'scaleX(.06)':'scaleY(.06)';
- for(let i=0;i<=NB;i++){
-  const b=bars[i];
-  b.style.transition='transform .22s cubic-bezier(.4,0,1,1) '+((NB-i)*12)+'ms';
-  b.style.transform=s;
- }
- setTimeout(paint,400);
 }
 window.app={
  /* take = {mode, cap, mic}. Older engines send no second argument. */
@@ -863,7 +912,9 @@ window.app={
  mode(m){const next=(m===undefined||m===null)?'mini':m;
   if(next==='processing'&&base!=='processing'){
    takeLen=elapsed()||6;procAt=Date.now();
-   if(base==='rec')morphOut();
+   /* the same wave carries straight on into processing and settles there,
+      starting from wherever the voice left it */
+   settle=disp;
   }
   base=next;busy=(m==='processing');paint();},
  /* summary = {words, secs, wpm, cleaned, blind} or null. `cleaned` is not
@@ -997,27 +1048,93 @@ function startDrag(ev){
 document.getElementById('hov-l').addEventListener('pointerdown',startDrag);
 document.querySelector('#panel-l .ph').addEventListener('pointerdown',startDrag);
 
-/* ---- the ribbon ----
-   f is how far we are between two samples (0..1). The track sits one pitch
-   PAST the leading edge at f=0 and glides home by f=1, so the live sample
-   slides in while it grows with his voice. On each new sample the values
-   re-index and f resets to 0: every tooth lands exactly where it already
-   was, so there is no visible jump - the old ribbon hopped every 130ms. */
-function drawWave(f){
- const off=((1-f)*PITCH).toFixed(2)+'px';
- track.style.transform=vertical?'translateY('+off+')':'translateX('+off+')';
- const max=vertical?MAXV:MAXH;
- for(let i=0;i<=NB;i++){
-  const b=bars[i];
-  const s=((2+hist[i]*(max-2))/max).toFixed(3);
-  b.style.transform=vertical?'scaleX('+s+')':'scaleY('+s+')';
-  /* A tooth goes grey only when a NEIGHBOUR was quiet too. One quiet sample
-     between two syllables used to flash grey mid-word, which reads as the
-     mic dropping out; a real pause (260ms+) still greys fully. */
-  const q=quietRaw[i]&&((i>0&&quietRaw[i-1])||(i<NB&&quietRaw[i+1]));
-  if(b._q!==q){b._q=q;b.classList.toggle('q',q);}
-  if(b._h!==hot[i]){b._h=hot[i];b.classList.toggle('hot',hot[i]);}
+/* ---- the wave ----
+   Three strands of sine, each filled as a band mirrored about the spine and
+   added together ('lighter'), so where they cross they brighten - the
+   braided, living look of a voice assistant's wave. Their height along the
+   length is the loudness history; they drift through it faster when he is
+   louder. A faint spine is always drawn, so silence reads as a LINE, not as
+   the bar going blank. Palettes: [bright core, body, deep edge]. */
+const PAL={
+ dictate:['#FFE4DC','#FF7A64','#D0453E'],
+ note:['#F2ECFF','#A994FA','#6C55E8'],
+ hot:['#FFF2CC','#F5B642','#D98E16'],
+ settle:['#EEE8FF','#9C86F6','#6C55E8'],
+ quiet:['#C2BAD3','#857C9C','#5D5672']};
+/* k = cycles along the length, s = drift speed and direction, w = height,
+   a = fill opacity. Different k and opposite drifts keep the braid from ever
+   visibly repeating. */
+const STRANDS=[{k:1.25,s:1.0,w:1.0,a:.36},{k:2.05,s:-1.35,w:.8,a:.26},
+ {k:3.1,s:1.8,w:.58,a:.2}];
+function rgba(h,a){const n=parseInt(h.slice(1),16);
+ return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')';}
+const amp=new Float32Array(257);
+/* f = how far we are between two history samples (0..1): the loudness
+   envelope drifts toward the old end continuously instead of stepping every
+   130ms, and re-indexes seamlessly on each new sample. live=false is the
+   processing beat: no history, one gentle settling amplitude. */
+function drawFlow(dt,f,live){
+ if(!cw||!ch)fitCanvas();
+ if(!cw||!ch)return;
+ wtime+=dt;
+ const loud=live?disp:settle;
+ if(!reduced)phase+=dt*(live?1.7+5*loud:.9);
+ const L=vertical?ch:cw, half=(vertical?cw:ch)/2, maxA=half-2*dpr;
+ let hotNow=false;
+ if(live)for(let i=NB-4;i<=NB;i++)if(hot[i])hotNow=true;
+ const pal=!live?PAL.settle:hotNow?PAL.hot:!hearing?PAL.quiet:
+  takeMode==='note'?PAL.note:PAL.dictate;
+ const N=Math.min(256,Math.max(24,Math.round(L/(3*dpr))));
+ for(let i=0;i<=N;i++){
+  const u=i/N;let a;
+  if(live){
+   const s=u*NB-(1-f);
+   const i0=Math.max(0,Math.min(NB,Math.floor(s))),i1=Math.min(NB,i0+1);
+   const t=s-Math.floor(s);
+   a=s<0?hist[0]:hist[i0]*(1-t)+hist[i1]*t;
+  }else a=loud;
+  /* both ends pinch into the spine, and the live end carries more weight
+     than the fading past */
+  const env=Math.pow(Math.sin(Math.PI*u),.75)*(.35+.65*u);
+  /* square-root lift: his mic is QUIET, and on a linear scale ordinary
+     speech barely lifted the wave off the spine */
+  amp[i]=Math.max(.03,Math.min(1,Math.sqrt(a)*1.25))*env*maxA;
  }
+ const mid=half;
+ const P=vertical?(al,off)=>cx.lineTo(mid+off,al):(al,off)=>cx.lineTo(al,mid+off);
+ const M=vertical?(al,off)=>cx.moveTo(mid+off,al):(al,off)=>cx.moveTo(al,mid+off);
+ cx.clearRect(0,0,cw,ch);
+ cx.globalCompositeOperation='lighter';
+ for(let si=STRANDS.length-1;si>=0;si--){
+  const st=STRANDS[si];
+  cx.beginPath();
+  for(let i=0;i<=N;i++){const u=i/N;
+   const v=amp[i]*st.w*Math.sin(6.2832*st.k*u+phase*st.s);
+   i?P(u*L,v):M(u*L,v);}
+  for(let i=N;i>=0;i--){const u=i/N;
+   P(u*L,-amp[i]*st.w*Math.sin(6.2832*st.k*u+phase*st.s));}
+  cx.closePath();
+  cx.fillStyle=rgba(pal[2],st.a);cx.fill();
+ }
+ cx.globalCompositeOperation='source-over';
+ cx.lineCap='round';
+ /* the spine */
+ cx.beginPath();M(2*dpr,0);P(L-2*dpr,0);
+ cx.lineWidth=dpr;cx.strokeStyle=rgba(pal[1],.3);cx.stroke();
+ /* two lit edges on top of the bands - in the wave's own colour, not white:
+    a near-white line read as "a line with a bump", not as a voice. In
+    silence they dim, so a pause is a calm line rather than a bright one. */
+ cx.globalCompositeOperation='lighter';
+ const dim=(live&&!hearing)?.5:1;
+ for(const [si,col,al,w] of [[1,pal[2],.75*dim,1.2],[0,pal[1],.95*dim,1.6]]){
+  const st=STRANDS[si];
+  cx.beginPath();
+  for(let i=0;i<=N;i++){const u=i/N;
+   const v=amp[i]*st.w*Math.sin(6.2832*st.k*u+phase*st.s);
+   i?P(u*L,v):M(u*L,v);}
+  cx.lineWidth=w*dpr;cx.strokeStyle=rgba(col,al);cx.stroke();
+ }
+ cx.globalCompositeOperation='source-over';
 }
 
 /* ---- the frame loop ----
@@ -1075,12 +1192,16 @@ function frame(now){
      history that still moves with his voice rather than a slideshow */
   hist[NB]=disp;quietRaw[NB]=disp<0.08;
   if(clip)hot[NB]=true;             // latched for the life of the sample
-  drawWave(Math.min(1,(now-shiftAt)/SHIFT));
+  drawFlow(dt,Math.min(1,(now-shiftAt)/SHIFT),true);
   if(panelOpen)stats();
   if(hovering||panelOpen)say();
  }else if(base==='processing'){
   const p=secs(Date.now()-procAt);
-  if(p!==lastPtime){lastPtime=p;elPtime.textContent=p;}
+  if(p!==lastPtime){lastPtime=p;elPtime.textContent=p;elT.textContent=p;}
+  /* the wave slows and settles to a gentle breath while the text is written */
+  const target=.2+.07*Math.sin(wtime*1.6);
+  settle+=(target-settle)*(1-Math.exp(-dt/.55));
+  drawFlow(dt,0,false);
  }else if(engStatus==='downloading'){
   say();if(panelOpen)stats();
  }
