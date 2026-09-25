@@ -1884,6 +1884,11 @@ html[data-theme=dark] #page-notebook{
             <div class="switch" id="appaware-switch" role="switch" tabindex="0" onclick="toggleAppAware()"
                  onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAppAware()}"></div>
           </div>
+          <div class="set-row">
+            <div><div class="sl">Keep the GPU awake while recording</div><div class="ss">stops the screen flickering when transcription starts, by waking the GPU while you talk instead of after. Draws more power — ignored on battery and on CPU</div></div>
+            <div class="switch" id="gpuhold-switch" role="switch" tabindex="0" onclick="toggleGpuHold()"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGpuHold()}"></div>
+          </div>
         </div>
         <div class="section-label" style="margin-top:16px">APPEARANCE</div>
         <div class="set-card" data-od-id="settings-appearance">
@@ -2051,6 +2056,7 @@ window.app = {
     let inner = '';
     if (st === 'idle') inner = `<span class="dot"></span><span>Idle — press ${rk} to start</span>`;
     else if (cmd) inner = `<span class="dot"></span><span>Command — listening</span><span class="timer" id="spill-timer">0:00</span>`;
+    else if (st === 'recording' && detail === 'note') inner = `<span class="dot"></span><span>Notebook — listening</span><span class="timer" id="spill-timer">0:00</span>`;
     else if (st === 'recording') inner = `<span class="dot"></span><span>Recording</span><span class="timer" id="spill-timer">0:00</span>`;
     // detail carries chunk progress ("3/14") for long takes — showing it is
     // the difference between "is this stuck?" and visible progress
@@ -2076,6 +2082,12 @@ window.app = {
     const i = HISTORY.findIndex(x => x.ts === e.ts);
     if (i >= 0) HISTORY[i] = e;
     renderFeed(); renderRail();
+  },
+  /* an Undo on the floating bar finishes a cancelled take, and the
+     "Cancelled - audio kept" row it replaces has to go with it */
+  removeEntry(ts){
+    const i = HISTORY.findIndex(x => x.ts === ts);
+    if (i >= 0){ HISTORY.splice(i, 1); renderFeed(); renderRail(); }
   },
   setLanguage(lang){ segSet('seg-lang', lang); },
   keyClash(on){
@@ -2669,6 +2681,11 @@ function toggleEnhance(){
   $('enhance-switch').classList.toggle('on', on);
   setSetting('audio_enhance', on);
 }
+function toggleGpuHold(){
+  const on = !$('gpuhold-switch').classList.contains('on');
+  $('gpuhold-switch').classList.toggle('on', on);
+  setSetting('gpu_hold', on);
+}
 function toggleAppAware(){
   const on = !$('appaware-switch').classList.contains('on');
   $('appaware-switch').classList.toggle('on', on);
@@ -2750,6 +2767,7 @@ function boot(init){
   $('idlepill-switch').classList.toggle('on', S.idle_pill !== false);
   $('enhance-switch').classList.toggle('on', S.audio_enhance !== false);
   $('appaware-switch').classList.toggle('on', S.app_aware !== false);
+  $('gpuhold-switch').classList.toggle('on', S.gpu_hold !== false);
   $('vol').value = S.chime_volume ?? 40;
   $('vol').style.setProperty('--val', $('vol').value + '%');
   $('vol-val').textContent = $('vol').value + '%';

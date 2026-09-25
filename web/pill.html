@@ -2,214 +2,181 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{background:#171320}
 html,body{overflow:hidden}
-:root{--vio:#6C55E8;--vio2:#9C86F6;--vio3:#C6B4FF;--ink:#F7F4EC;--red:#F26B5E;
-/* live mic level, 0..1, written every frame by the raf loop while recording.
-   Everything that has to be legible from across the room reads this. */
+:root{--vio:#6C55E8;--vio2:#9C86F6;--vio3:#C6B4FF;--ink:#F7F4EC;--red:#D0453E;
+/* warm plum-black: the brief says warm, not cool violet */
+--slab-hi:#2E2530;--slab-mid:#201A1F;--slab-lo:#17130F;
+/* pre-mixed rim colours: opaque so wallpaper cannot tint them */
+--edge-hi:#6B5F57;--edge-lo:#2E2729;
+/* light theme panel tokens */
+--lt-bg:#F5EFE2;--lt-surface:#FFFDF7;--lt-text:#231E17;--lt-text2:#665D4C;
+--lt-muted:#756B57;--lt-border:#E5DAC4;--lt-accent:#6C55E8;--lt-accent-text:#5240C9;
+/* live mic level, 0..1, written every frame by the raf loop while recording */
 --lv:0}
 /* ==== THE OBJECT ========================================================
-   One slab of dark plum glass PINNED FLUSH to the docked screen edge — a
-   handle growing out of the edge, not a capsule floating near it. The
-   docked side is square and unlit; only the outward face gets the corner
-   radius and the rim light. That asymmetry is the whole read: the edge is
-   where it lives, the outward face is where it opens. */
-body{font-family:'Segoe UI Variable Display','Segoe UI',system-ui,sans-serif;
+   One slab of dark plum glass PINNED FLUSH to the docked screen edge */
+body{font-family:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;
 height:100vh;position:relative;cursor:default;-webkit-user-select:none;user-select:none;
-background:radial-gradient(135% 190% at 50% -35%,#2B233A 0%,#1E1829 44%,#15111F 100%),#171320;
+background:radial-gradient(135% 190% at 50% -35%,var(--slab-hi) 0%,var(--slab-mid) 44%,var(--slab-lo) 100%),var(--slab-lo);
 box-shadow:inset 0 -8px 15px -9px rgba(0,0,0,.8),
-inset 0 9px 18px -12px rgba(180,152,255,.4)}
-/* Radius + hairline border on the THREE outward sides only, so no seam
-   shows against the screen edge. Radii match what DWM actually clips
-   (ROUNDSMALL ~4px resting, ROUND ~8px working). */
+inset 0 9px 18px -12px rgba(200,170,230,.22)}
+/* ONE gradient border: opaque rim colours, no border on the docked side.
+   Eliminates the old 1.5px strip that doubled against the border at 125%. */
 body.dock-bottom{border-radius:8px 8px 0 0;
-border:1px solid rgba(247,244,236,.20);border-bottom:0}
+border:1px solid transparent;border-bottom:0;
+background:radial-gradient(135% 190% at 50% -35%,var(--slab-hi),var(--slab-mid) 44%,var(--slab-lo)) padding-box,
+linear-gradient(0deg,var(--edge-lo),var(--edge-hi)) border-box}
 body.dock-left{border-radius:0 8px 8px 0;
-border:1px solid rgba(247,244,236,.20);border-left:0}
+border:1px solid transparent;border-left:0;
+background:radial-gradient(135% 190% at 50% -35%,var(--slab-hi),var(--slab-mid) 44%,var(--slab-lo)) padding-box,
+linear-gradient(270deg,var(--edge-lo),var(--edge-hi)) border-box}
 body.dock-right{border-radius:8px 0 0 8px;
-border:1px solid rgba(247,244,236,.20);border-right:0}
-/* Rim light rides the outward face. Full-span sized background, radius
-   inherited, so the corner curve clips it — never a short absolutely
-   positioned strip, whose ends jut past where the curve begins. */
-body::before{content:'';position:absolute;inset:0;border-radius:inherit;
-pointer-events:none;z-index:5;background:none}
-body.dock-bottom::before{background:
-linear-gradient(90deg,rgba(247,244,236,0) 6%,rgba(247,244,236,.5) 50%,rgba(247,244,236,0) 94%) top left/100% 1.5px no-repeat}
-body.dock-left::before{background:
-linear-gradient(180deg,rgba(247,244,236,0) 6%,rgba(247,244,236,.45) 50%,rgba(247,244,236,0) 94%) top right/1.5px 100% no-repeat}
-body.dock-right::before{background:
-linear-gradient(180deg,rgba(247,244,236,0) 6%,rgba(247,244,236,.45) 50%,rgba(247,244,236,0) 94%) top left/1.5px 100% no-repeat}
-/* Resting handle: smaller, softer, no hard border — a seat, not a HUD. */
-body.tab{border:none;box-shadow:
-inset 0 0 0 1px rgba(247,244,236,.13),
+border:1px solid transparent;border-right:0;
+background:radial-gradient(135% 190% at 50% -35%,var(--slab-hi),var(--slab-mid) 44%,var(--slab-lo)) padding-box,
+linear-gradient(90deg,var(--edge-lo),var(--edge-hi)) border-box}
+/* Resting handle: smaller, softer — same gradient-border pattern, no 4-side ring */
+body.tab{box-shadow:
 inset 0 -3px 7px -5px rgba(0,0,0,.8),
-inset 0 4px 9px -6px rgba(180,152,255,.4)}
-body.tab.dock-bottom{border-radius:4px 4px 0 0}
-body.tab.dock-left{border-radius:0 4px 4px 0}
-body.tab.dock-right{border-radius:4px 0 0 4px}
+inset 0 4px 9px -6px rgba(200,170,230,.22)}
+body.tab.dock-bottom{border-radius:4px 4px 0 0;
+border:1px solid transparent;border-bottom:0;
+background:radial-gradient(135% 190% at 50% -35%,var(--slab-hi),var(--slab-mid) 44%,var(--slab-lo)) padding-box,
+linear-gradient(0deg,rgba(247,244,236,.08),rgba(247,244,236,.18)) border-box}
+body.tab.dock-left{border-radius:0 4px 4px 0;
+border:1px solid transparent;border-left:0;
+background:radial-gradient(135% 190% at 50% -35%,var(--slab-hi),var(--slab-mid) 44%,var(--slab-lo)) padding-box,
+linear-gradient(270deg,rgba(247,244,236,.08),rgba(247,244,236,.18)) border-box}
+body.tab.dock-right{border-radius:4px 0 0 4px;
+border:1px solid transparent;border-right:0;
+background:radial-gradient(135% 190% at 50% -35%,var(--slab-hi),var(--slab-mid) 44%,var(--slab-lo)) padding-box,
+linear-gradient(90deg,rgba(247,244,236,.08),rgba(247,244,236,.18)) border-box}
 
 /* ==== MOTION ============================================================
-   No preserve-3d, no translateZ anywhere: WebView2's compositor drops the
-   contents of such a stack on hover-out. Depth is translateY + scale +
-   shadow only. Every animated property is one no transition also owns, so
-   a pointer leaving mid-transition can never strand a wrong resting state. */
+   No preserve-3d, no translateZ anywhere. */
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes rise{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
-/* transform only — #recap also runs recapCalm on opacity, and two
-   animations touching one property lets the later one silently win */
-@keyframes pop{from{transform:scale(.72)}to{transform:none}}
-/* the filament breathing: 7.4s, shallow. Peripheral vision reads "alive"
-   without ever reporting movement. */
+/* done receipt: enter from .9, not .72 — Emil says never from 0 */
+@keyframes pop{from{transform:scale(.9)}to{transform:none}}
+/* the filament breathing: 7.4s, shallow */
 @keyframes filament{0%,100%{opacity:.84}50%{opacity:1}}
-/* engine warming: a shuttle runs the length of the dark filament. This one
-   IS meant to be noticed — silence during a 1.5GB download is
-   indistinguishable from a broken app. */
-@keyframes shuttleH{0%{background-position:-45% 50%}100%{background-position:145% 50%}}
-@keyframes shuttleV{0%{background-position:50% -45%}100%{background-position:50% 145%}}
+/* engine warming: shuttle via transform, not background-position */
+@keyframes shuttleH{0%{transform:translateX(-100%)}100%{transform:translateX(238%)}}
+@keyframes shuttleV{0%{transform:translateY(-100%)}100%{transform:translateY(238%)}}
 @keyframes writeDot{0%,100%{opacity:.28;transform:none}
 50%{opacity:1;transform:scale(1.35)}}
-/* processing is ~4s now, so it gets one confident pass of light, not a rail */
-@keyframes scanH{0%{background-position:-30% 50%}100%{background-position:130% 50%}}
-@keyframes scanV{0%{background-position:50% -30%}100%{background-position:50% 130%}}
+/* processing scan: transform sweep with rest at end */
+@keyframes scanH{0%{transform:translateX(-100%)}72%,100%{transform:translateX(264%)}}
+@keyframes scanV{0%{transform:translateY(-100%)}72%,100%{transform:translateY(264%)}}
 @keyframes bloom{0%{opacity:0}14%{opacity:1}100%{opacity:0}}
-/* the receipt states its number, then stands down — present, never nagging */
 @keyframes recapCalm{to{opacity:.62}}
 @keyframes failShake{0%,100%{transform:translateX(0)}18%{transform:translateX(-3px)}
 38%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
-@keyframes engBar{0%{background-position:-40% 50%}100%{background-position:140% 50%}}
+/* engine bar: transform sweep */
+@keyframes engBarH{0%{transform:translateX(-100%)}72%,100%{transform:translateX(294%)}}
 
 .layer{position:absolute;inset:0;display:flex;align-items:center;
 justify-content:center;gap:8px}
 
 /* ==== 1. IDLE — the filament ===========================================
-   99% of its life, at 36x12. A hairline of light seated in a machined
-   groove. It has exactly three readings, and they are three different
-   objects, not three brightnesses:
-     armed    violet filament, lit, breathing
-     warming  dark filament, a shuttle running its length
-     offline  dim red filament, dead still
-   Violet or red-dead only — idle can never be mistaken for a take.
-   Orientation owns the gradient ANGLE and engine state owns the gradient
-   COLOURS, and the two are kept apart by custom properties — otherwise
-   `body.vert #core::before` and `body.eng-fail #core::before` are the same
-   specificity and whichever is written last silently wins, which is how a
-   side-docked bar would have shown a violet filament for a dead engine. */
+   A hairline of light seated in a machined groove. */
 #core{position:relative;width:22px;height:3px;border-radius:999px;
 --f1:rgba(108,85,232,.35);--f2:#9C86F6;--f3:#E6DCFF;
---fglow:rgba(156,134,246,.6);
-background:linear-gradient(180deg,#0B0814,#141026 70%,#1B1530);
-box-shadow:inset 0 1px 1.5px rgba(0,0,0,.9),
- inset 0 -1px 0 rgba(226,214,255,.14),
- 0 1px 0 rgba(247,244,236,.05);
+--fglow:rgba(156,134,246,.55);
+/* the groove: dark slot with shaded top lip and catch-light below */
+background:linear-gradient(180deg,#0A0709,#100C10 70%,#1A1518);
+box-shadow:inset 0 1px 1px rgba(0,0,0,.95),
+ 0 1px 0 rgba(247,244,236,.07);
 animation:fadeIn .4s ease-out both;
-transition:width .24s cubic-bezier(.2,.8,.3,1),height .24s cubic-bezier(.2,.8,.3,1),filter .16s}
-/* the light itself. Full-span, radius inherited, so the groove's curve
-   clips it — never a strip laid across a rounded edge. */
+transition:transform .24s cubic-bezier(.2,.8,.3,1),filter .16s}
+/* the light itself. ONE glow, not two stacked. */
 #core::before{content:'';position:absolute;inset:0;border-radius:inherit;
 pointer-events:none;
 background:linear-gradient(90deg,var(--f1),var(--f2) 34%,var(--f3) 50%,var(--f2) 66%,var(--f1));
-box-shadow:0 0 4px var(--fglow),0 0 9px var(--fglow);
+box-shadow:0 0 5px var(--fglow);
 animation:filament 7.4s ease-in-out infinite;
 transition:box-shadow .18s,opacity .18s}
-/* the shuttle. display:none by default so it costs nothing when armed. */
-#core::after{content:'';position:absolute;inset:0;border-radius:inherit;display:none;
-pointer-events:none;background-repeat:no-repeat;background-size:42% 100%;
-background-image:linear-gradient(90deg,rgba(198,180,255,0),#C6B4FF 50%,rgba(198,180,255,0));
+/* the shuttle: transform-based, not background-position */
+#core::after{content:'';position:absolute;inset:0 auto 0 0;width:42%;border-radius:inherit;display:none;
+pointer-events:none;will-change:transform;
+background:linear-gradient(90deg,rgba(198,180,255,0),#C6B4FF 50%,rgba(198,180,255,0));
 animation:shuttleH 1.5s ease-in-out infinite}
 /* -- warming: filament goes dark and the shuttle runs it -- */
 body.eng-warm #core::before{opacity:.14;animation:none;box-shadow:none}
 body.eng-warm #core::after{display:block}
 /* -- offline: the light is out, and it is out in red -- */
-body.eng-fail #core{--f1:rgba(242,107,94,.2);--f2:rgba(242,107,94,.6);
---f3:rgba(242,107,94,.78);--fglow:rgba(242,107,94,.28)}
+body.eng-fail #core{--f1:rgba(208,69,62,.2);--f2:rgba(208,69,62,.6);
+--f3:rgba(208,69,62,.78);--fglow:rgba(208,69,62,.28)}
 body.eng-fail #core::before{animation:none}
-/* -- CPU: armed, but the light is cooler, so "which engine" is legible
-      from the resting state without ever shouting about it -- */
+/* -- CPU: armed, but the light is cooler -- */
 body.eng-cpu #core{--f1:rgba(140,130,182,.3);--f2:#B6ACDC;--f3:#EDE7FF;
 --fglow:rgba(182,172,220,.45)}
-/* The pointer is over the WINDOW before Python has finished resizing it,
-   so this pure-CSS answer is the fastest possible "yes, I noticed you":
-   the filament stretches toward the bar it is about to become. Width and
-   filter only — opacity and background-position belong to the keyframes. */
-body.tab:not(.vert):hover #core{width:28px}
-body.tab.vert:hover #core{height:28px}
+/* hover stretch: scaleX instead of width */
+body.tab:not(.vert):hover #core{transform:scaleX(1.27)}
+body.tab.vert:hover #core{transform:scaleY(1.27)}
 body.tab:hover #core{filter:brightness(1.3) saturate(1.08)}
-body.tab:hover #core::before{box-shadow:0 0 6px rgba(178,158,255,.9),0 0 13px rgba(108,85,232,.5)}
-/* vertical is its own composition: the filament runs WITH the screen edge
-   and its recess/rim pair rotates, so the light still comes off the
-   outward face. */
+body.tab:hover #core::before{box-shadow:0 0 6px rgba(178,158,255,.9)}
+/* vertical groove */
 body.vert #core{width:3px;height:22px;
-background:linear-gradient(90deg,#0B0814,#141026 70%,#1B1530);
-box-shadow:inset 1px 0 1.5px rgba(0,0,0,.9),
- inset -1px 0 0 rgba(226,214,255,.14)}
-/* angle only — the colours stay wherever the engine state put them */
+background:linear-gradient(90deg,#0A0709,#100C10 70%,#1A1518);
+box-shadow:inset 1px 0 1px rgba(0,0,0,.95),
+ -1px 0 0 rgba(247,244,236,.07)}
 body.vert #core::before{
 background:linear-gradient(180deg,var(--f1),var(--f2) 34%,var(--f3) 50%,var(--f2) 66%,var(--f1))}
-body.vert #core::after{background-size:100% 42%;
-background-image:linear-gradient(180deg,rgba(198,180,255,0),#C6B4FF 50%,rgba(198,180,255,0));
+body.vert #core::after{inset:0 0 auto 0;width:auto;height:42%;
+background:linear-gradient(180deg,rgba(198,180,255,0),#C6B4FF 50%,rgba(198,180,255,0));
 animation:shuttleV 1.5s ease-in-out infinite}
 
-/* ==== 2. RECORDING — the last two seconds, not the last frame ==========
-   The one thing a live mirror cannot answer is "was I heard a moment
-   ago". So the ribbon is a rolling 2.3s HISTORY: a new sample every
-   130ms, newest at the leading edge, the past fading out behind it. A
-   pause shows up as a run of flat grey teeth he can literally count.
-   Silence and speech are two different objects: grey flat line on a
-   drained slab vs a red mirrored ribbon on a lit one. */
+/* ==== 2. RECORDING — the last two seconds, not the last frame ========== */
 #rec-l{gap:8px;padding:0 9px}
+/* Red once: wash OR teeth — not both plus ring plus clock glow.
+   Keeping the wash, dropping the inset ring and clock shadow. */
 #recwash{position:absolute;inset:0;border-radius:inherit;
-background:radial-gradient(125% 160% at 50% 125%,rgba(242,107,94,.34),rgba(242,107,94,0) 72%);
+background:radial-gradient(125% 160% at 50% 125%,rgba(208,69,62,.32),rgba(208,69,62,0) 72%);
 opacity:calc(.26 + var(--lv) * .74);
-box-shadow:inset 0 0 0 1px rgba(242,107,94,.18);
-transition:filter .28s,box-shadow .28s}
-body.rec.hearing #recwash{box-shadow:
-inset 0 0 0 1px rgba(242,107,94,calc(.28 + var(--lv) * .5)),
-inset 0 0 24px rgba(242,107,94,calc(var(--lv) * .5))}
-/* not hearing him: the colour drains out of the whole object. Readable
-   from the far side of the room without resolving a single detail. */
+transition:filter .28s}
 body.rec:not(.hearing) #recwash{filter:saturate(.1) brightness(.85)}
-body.vert #recwash{background:radial-gradient(160% 125% at 50% 100%,rgba(242,107,94,.34),rgba(242,107,94,0) 72%)}
-/* the clock is the biggest thing on the slab — it is the number he is
-   actually watching for four minutes at a time */
-#t{font-size:15px;font-weight:600;color:#FBF7EF;font-variant-numeric:tabular-nums;
-letter-spacing:.005em;flex:none;text-shadow:0 0 12px rgba(255,190,178,.28);
+body.vert #recwash{background:radial-gradient(160% 125% at 50% 100%,rgba(208,69,62,.32),rgba(208,69,62,0) 72%)}
+/* the clock: no text-shadow (it blurs grayscale-AA 15px text) */
+#t{font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:15px;font-weight:600;color:#FBF7EF;font-variant-numeric:tabular-nums;
+letter-spacing:.005em;flex:none;
 animation:rise .14s ease-out .1s both}
-/* the ribbon. Its spine is a full-span background line, radius-free and
-   edge-to-edge — never a stubby positioned rule. The mask dims the past.
-   flex-end pins the NEWEST sample against the clock, so if a long take
-   ever squeezes the box it is the oldest tooth that falls off the back,
-   never the live one. */
+/* last-minute countdown: amber, not red */
+body.ending #t{color:#F2B544}
+/* the ribbon */
 #wave{display:flex;align-items:center;justify-content:flex-end;gap:3px;flex:1;
 min-width:0;height:22px;overflow:hidden;
-background:linear-gradient(90deg,rgba(242,107,94,0),rgba(242,107,94,.34) 18%,
-rgba(242,107,94,.34) 86%,rgba(242,107,94,0)) left center/100% 1px no-repeat;
+background:linear-gradient(90deg,rgba(208,69,62,0),rgba(208,69,62,.32) 18%,
+rgba(208,69,62,.32) 86%,rgba(208,69,62,0)) left center/100% 1px no-repeat;
 -webkit-mask:linear-gradient(90deg,rgba(0,0,0,.12),#000 46%);
 mask:linear-gradient(90deg,rgba(0,0,0,.12),#000 46%);
 animation:fadeIn .16s ease-out .14s both;transition:filter .28s}
 body.rec:not(.hearing) #wave{filter:saturate(.06)}
-/* each tooth is centred in the row, so setting height alone grows it
-   symmetrically out of the spine in both directions */
-#wave i{width:2px;height:2px;border-radius:999px;display:block;flex:none;
-background:linear-gradient(180deg,#FFCFC2,#FA7E6F 46%,#DE5648);
-box-shadow:0 0 7px rgba(250,126,111,.5);
+#wave-track{display:flex;align-items:center;gap:3px;flex:none;
+will-change:transform}
+/* tooth colour in variables for mode re-tinting */
+#rec-l{--t1:#FFCFC2;--t2:#E85A4C;--t3:#C03830;--tg:rgba(232,90,76,.5)}
+#wave i{width:2px;height:20px;border-radius:999px;display:block;flex:none;
+transform:scaleY(.1);
+background:linear-gradient(180deg,var(--t1),var(--t2) 46%,var(--t3));
+box-shadow:0 0 6px var(--tg);
 transition:background .2s,box-shadow .2s}
-/* a sample that was silence stays grey forever, so the pause is still
-   legible after it has scrolled away from the leading edge */
 #wave i.q{background:#5F5880;box-shadow:none}
+/* too loud: amber, not red */
+#wave i.hot{background:linear-gradient(180deg,#FFE7AE,#F2B544 46%,#D98E16);
+box-shadow:0 0 6px rgba(242,181,68,.6)}
 
 /* ==== 3. PROCESSING — one beat, not a state ============================
-   Local Whisper turns a 2-minute take around in ~4s. A rail with an ETA
-   would be theatre for a beat that barely exists, so this is a single
-   pass of violet light across the slab and three writing dots. Nothing
-   to read, nothing to wait on. */
+   Transform-based sweep with rest at 72-100% of the cycle. */
 #proc-l{gap:10px;padding:0 10px;overflow:hidden}
-#proc-l::before{content:'';position:absolute;inset:0;pointer-events:none;
-background-repeat:no-repeat;background-size:38% 100%;
-background-image:linear-gradient(90deg,rgba(156,134,246,0),rgba(156,134,246,.3) 45%,
+#proc-l::before{content:'';position:absolute;inset:0 auto 0 0;width:38%;pointer-events:none;
+will-change:transform;
+background:linear-gradient(90deg,rgba(156,134,246,0),rgba(156,134,246,.3) 45%,
 rgba(198,180,255,.42) 50%,rgba(156,134,246,.3) 55%,rgba(156,134,246,0));
-animation:scanH 1.15s cubic-bezier(.4,0,.3,1) infinite}
-body.vert #proc-l::before{background-size:100% 38%;
-background-image:linear-gradient(180deg,rgba(156,134,246,0),rgba(156,134,246,.3) 45%,
+animation:scanH 1.6s cubic-bezier(.4,0,.3,1) infinite}
+body.vert #proc-l::before{inset:0 0 auto 0;width:auto;height:38%;
+background:linear-gradient(180deg,rgba(156,134,246,0),rgba(156,134,246,.3) 45%,
 rgba(198,180,255,.42) 50%,rgba(156,134,246,.3) 55%,rgba(156,134,246,0));
-animation:scanV 1.15s cubic-bezier(.4,0,.3,1) infinite}
+animation:scanV 1.6s cubic-bezier(.4,0,.3,1) infinite}
 .pwork{display:flex;align-items:center;gap:9px;position:relative;
 animation:rise .16s ease-out both}
 #pdots{display:flex;align-items:center;gap:4px}
@@ -218,24 +185,23 @@ background:linear-gradient(180deg,var(--vio3),var(--vio2));
 box-shadow:0 0 6px rgba(156,134,246,.6);animation:writeDot 1.05s ease-in-out infinite}
 #pdots i:nth-child(2){animation-delay:.14s}
 #pdots i:nth-child(3){animation-delay:.28s}
-.ptime{font-size:10px;font-weight:600;letter-spacing:.05em;color:#A79CD2;
+.ptime{font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:10px;font-weight:600;letter-spacing:.05em;color:#A79CD2;
 font-variant-numeric:tabular-nums}
 
-/* ==== 4. DONE — the receipt ============================================
-   The take now comes back with words, seconds and wpm. That is worth a
-   real moment: the number lands big, holds for 1.4s, then stands itself
-   down to a quiet line rather than blinking out or hanging around. */
-/* measured: "214 words 138 wpm" is 121px inside the 130px the 150x38 slab
-   leaves once padded — the widest a real take produces, with margin */
+/* ==== 4. DONE — the receipt ============================================ */
 #recap{display:none;align-items:baseline;justify-content:center;gap:5px;
 position:relative;animation:pop .18s cubic-bezier(.2,1.3,.4,1) both,
 recapCalm .5s ease 1.4s both}
-#rc-n{font-size:18px;font-weight:600;color:#F4EFFF;line-height:1;
+#rc-n{font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:18px;font-weight:600;color:#F4EFFF;line-height:1;
 letter-spacing:-.02em;font-variant-numeric:tabular-nums;
 text-shadow:0 0 14px rgba(180,158,255,.5)}
-#rc-u{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+#rc-u{font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
 color:#9E93CC}
-#rc-w{font-size:11px;font-style:normal;font-weight:600;color:#C6B4FF;
+#rc-w{font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:11px;font-style:normal;font-weight:600;color:#C6B4FF;
 font-variant-numeric:tabular-nums;letter-spacing:.01em}
 #recap.bare #rc-n{font-size:13px;letter-spacing:0}
 #recap.bare #rc-u,#recap.bare #rc-w{display:none}
@@ -245,19 +211,16 @@ animation:bloom 1s ease-out both}
 
 /* ==== 5. FAILURE ======================================================= */
 #failwash{position:absolute;inset:0;border-radius:inherit;
-background:radial-gradient(125% 165% at 50% 125%,rgba(242,107,94,.3),rgba(242,107,94,.04) 74%);
-box-shadow:inset 0 0 0 1px rgba(242,107,94,.55)}
+background:radial-gradient(125% 165% at 50% 125%,rgba(208,69,62,.3),rgba(208,69,62,.04) 74%);
+box-shadow:inset 0 0 0 1px rgba(208,69,62,.55)}
 #fail-l{gap:8px;padding:0 11px;cursor:pointer;animation:failShake .36s ease-out both}
-#fail-l svg{flex:none;filter:drop-shadow(0 0 6px rgba(242,107,94,.65))}
-#fail-l b{font-size:11.5px;font-weight:600;color:#FFB5AA;white-space:nowrap;
+#fail-l svg{flex:none;filter:drop-shadow(0 0 6px rgba(208,69,62,.65))}
+#fail-l b{font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:11.5px;font-weight:600;color:#FFB5AA;white-space:nowrap;
 min-width:0;overflow:hidden;text-overflow:ellipsis}
 
-/* ==== 6. HOVER — 190x44, horizontal on every dock ======================
-   Two lines, because 44px finally affords a second one: the state on top
-   (carrying the live clock, so reaching for Cancel never costs him the
-   number he was watching) and the thing he would otherwise have to open
-   the panel to learn underneath — hotkey, engine, download elapsed.
-   Cancel is 26px, red at rest, and always the outward-most target. */
+/* ==== 6. HOVER — 190x46, horizontal on every dock ======================
+   Buttons radius 6 so they nest in the 46px bar. */
 #hov-l{gap:5px;padding:0 8px;cursor:grab}
 #hov-l:active{cursor:grabbing}
 #grip{width:8px;height:18px;flex:none;margin-right:1px;opacity:.5;
@@ -266,21 +229,21 @@ background-size:4px 4px;transition:opacity .14s}
 #hov-l:hover #grip{opacity:.85}
 .htxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;
 justify-content:center;overflow:hidden}
-#hov-t{font-size:12px;font-weight:600;color:#F4EEE1;line-height:1.15;
+#hov-t{font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:12px;font-weight:600;color:#F4EEE1;line-height:1.15;
 font-variant-numeric:tabular-nums;letter-spacing:.005em;
 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
-#hov-s{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+#hov-s{font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
 color:#9186BE;line-height:1.15;white-space:nowrap;overflow:hidden;
 text-overflow:ellipsis;text-align:left}
 #hov-s:empty{display:none}
-.pbtn{position:relative;width:26px;height:26px;flex:none;border:0;border-radius:8px;
+.pbtn{position:relative;width:26px;height:26px;flex:none;border:0;border-radius:6px;
 cursor:pointer;padding:0;color:#EFE9DC;display:flex;align-items:center;
 justify-content:center;font:inherit;
 background:linear-gradient(180deg,rgba(247,244,236,.16),rgba(247,244,236,.05));
 box-shadow:0 1px 2px rgba(0,0,0,.45),inset 0 0 0 1px rgba(247,244,236,.07);
 transition:background .14s,color .14s,transform .1s,box-shadow .14s}
-/* same discipline as the body rim: full-span strip, radius-clipped, at
-   inset 0 — a highlight at a negative inset sits proud of the real edge */
 .pbtn::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
 background:linear-gradient(90deg,rgba(255,255,255,0) 12%,rgba(255,255,255,.5) 50%,
 rgba(255,255,255,0) 88%) top left/100% 1px no-repeat}
@@ -289,25 +252,18 @@ rgba(255,255,255,0) 88%) top left/100% 1px no-repeat}
 .pbtn:active{transform:translateY(1px);box-shadow:inset 0 1px 3px rgba(0,0,0,.55)}
 .pbtn:focus-visible{outline:2px solid #9C86F6;outline-offset:1px}
 .pbtn.warn{color:#FFC6BD;
-background:linear-gradient(180deg,rgba(242,107,94,.36),rgba(192,67,55,.16));
-box-shadow:0 1px 2px rgba(0,0,0,.45),inset 0 0 0 1px rgba(242,107,94,.36)}
-.pbtn.warn:hover{background:linear-gradient(180deg,rgba(242,107,94,.75),rgba(192,67,55,.5));color:#FFF1EE}
+background:linear-gradient(180deg,rgba(208,69,62,.36),rgba(168,45,38,.16));
+box-shadow:0 1px 2px rgba(0,0,0,.45),inset 0 0 0 1px rgba(208,69,62,.36)}
+.pbtn.warn:hover{background:linear-gradient(180deg,rgba(208,69,62,.75),rgba(168,45,38,.5));color:#FFF1EE}
 #btn-panel-close{width:20px;height:20px;border-radius:6px}
 
-/* ==== 7. PANEL — 232x150 ===============================================
-   The roomiest state, so it carries the two things no smaller state can:
-   what the engine is doing (the first-run download is minutes long and
-   coarse, so it gets a live shuttle and an elapsed clock), and the
-   session's own tally. Every figure here was observed on this page.
-   Height budget: a side dock keeps a border top AND bottom, so the worst
-   case is 148px, minus 12 of padding = 136. The stack below sums to 135 —
-   header 20, engine 22, stats 32, dock 29, hint 12, four 5px gaps.
-   Anything taller and overflow:hidden eats the hint line. */
+/* ==== 7. PANEL — 232x150 =============================================== */
 #panel-l{flex-direction:column;align-items:stretch;gap:5px;padding:6px 10px;
 justify-content:flex-start}
 #panel-l .ph{display:flex;align-items:center;gap:8px;height:20px;flex:none;cursor:grab;
 background:linear-gradient(90deg,rgba(247,244,236,.18),rgba(247,244,236,.02)) bottom left/100% 1px no-repeat}
-#panel-l .ph b{flex:1;min-width:0;font-size:12px;font-weight:600;color:#F4EEE1;
+#panel-l .ph b{flex:1;min-width:0;font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:12px;font-weight:600;color:#F4EEE1;
 font-variant-numeric:tabular-nums;
 white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* engine row */
@@ -319,16 +275,17 @@ box-shadow:inset 0 0 0 1px rgba(247,244,236,.06)}
 background:linear-gradient(180deg,var(--vio3),var(--vio));
 box-shadow:0 0 6px rgba(156,134,246,.75)}
 body.eng-warm #eng-dot{background:#6E6690;box-shadow:none}
-body.eng-fail #eng-dot{background:var(--red);box-shadow:0 0 6px rgba(242,107,94,.7)}
+body.eng-fail #eng-dot{background:var(--red);box-shadow:0 0 6px rgba(208,69,62,.7)}
 body.eng-cpu #eng-dot{background:linear-gradient(180deg,#D9D2F2,#8C82B6);box-shadow:none}
-#eng-t{flex:1;min-width:0;font-size:10px;font-weight:600;letter-spacing:.06em;
+#eng-t{flex:1;min-width:0;font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:10px;font-weight:600;letter-spacing:.06em;
 text-transform:uppercase;color:#B7ADDE;white-space:nowrap;overflow:hidden;
 text-overflow:ellipsis}
-/* coarse status only ever arrives, so this bar is honestly indeterminate */
-#eng-bar{display:none;position:absolute;left:0;right:0;bottom:0;height:2px;
-background-repeat:no-repeat;background-size:34% 100%;
-background-image:linear-gradient(90deg,rgba(108,85,232,0),#9C86F6 50%,rgba(108,85,232,0));
-animation:engBar 1.4s ease-in-out infinite}
+/* engine bar: transform-based sweep */
+#eng-bar{display:none;position:absolute;left:0;bottom:0;width:34%;height:2px;
+will-change:transform;
+background:linear-gradient(90deg,rgba(108,85,232,0),#9C86F6 50%,rgba(108,85,232,0));
+animation:engBarH 1.4s ease-in-out infinite}
 body.eng-warm #eng-bar{display:block}
 /* stats */
 .pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;flex:none}
@@ -336,18 +293,21 @@ body.eng-warm #eng-bar{display:block}
 gap:2px;height:32px;border-radius:7px;
 background:linear-gradient(180deg,rgba(247,244,236,.07),rgba(247,244,236,.02));
 box-shadow:inset 0 0 0 1px rgba(247,244,236,.06)}
-.pstat b{font-size:13px;font-weight:600;color:#EFE7D8;letter-spacing:-.01em;
+.pstat b{font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:13px;font-weight:600;color:#EFE7D8;letter-spacing:-.01em;
 font-variant-numeric:tabular-nums;line-height:1}
-.pstat span{font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+.pstat span{font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
 color:#8C82B6;line-height:1}
 body.rec #ps-turn{color:#FFC2B7}
-#panel-l .plab{font-size:9px;font-weight:700;letter-spacing:.11em;
+#panel-l .plab{font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:9px;font-weight:700;letter-spacing:.11em;
 text-transform:uppercase;color:#8C82B6;flex:none}
-#panel-l #panel-hint{text-transform:none;letter-spacing:.01em;font-size:10px;
-font-weight:500;color:#968CC2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+#panel-l #panel-hint{text-transform:none;letter-spacing:.01em;
+font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:10px;font-weight:500;color:#968CC2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 text-align:center;height:12px;line-height:12px}
-/* dock picker — each tile is a little screen, the violet bar flush on the
-   edge it docks to, mirroring how the real slab sits on the real edge */
+/* dock picker */
 #dock{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;flex:none}
 #dock button{position:relative;height:29px;padding:0;cursor:pointer;overflow:hidden;
 border:1px solid rgba(247,244,236,.10);border-radius:8px;
@@ -372,29 +332,22 @@ transform:translateY(-50%);background:linear-gradient(180deg,#6C55E8,#C6B4FF)}
 #dock button[data-p=left] i{left:0;border-radius:0 3px 3px 0}
 #dock button[data-p=right] i{right:0;border-radius:3px 0 0 3px}
 
-/* ==== 8. VERTICAL — an upright composition, not a rotation =============
-   38x150. The ribbon runs down the column with the newest sample at the
-   BOTTOM, right next to the clock, so "now" and "how long" sit together
-   and the past scrolls away upward. Teeth grow sideways out of the spine
-   in both directions, which is why a 38px-wide column can still show
-   level as width. */
+/* ==== 8. VERTICAL — an upright composition, not a rotation ============= */
 body.vert #rec-l{flex-direction:column-reverse;gap:6px;padding:8px 0}
 body.vert #wave{flex-direction:column;width:26px;height:auto;flex:1;min-height:0;
-background:linear-gradient(180deg,rgba(242,107,94,0),rgba(242,107,94,.34) 18%,
-rgba(242,107,94,.34) 86%,rgba(242,107,94,0)) center top/1px 100% no-repeat;
+background:linear-gradient(180deg,rgba(208,69,62,0),rgba(208,69,62,.32) 18%,
+rgba(208,69,62,.32) 86%,rgba(208,69,62,0)) center top/1px 100% no-repeat;
 -webkit-mask:linear-gradient(180deg,rgba(0,0,0,.12),#000 46%);
 mask:linear-gradient(180deg,rgba(0,0,0,.12),#000 46%)}
-body.vert #wave i{background:linear-gradient(90deg,#FFCFC2,#FA7E6F 46%,#DE5648)}
-/* `#wave i.q` is LOWER specificity than the rule above, so upright it has
-   to be restated — without this a pause paints red on a side dock and the
-   whole silence-vs-speech read collapses in exactly one orientation */
+body.vert #wave-track{flex-direction:column}
+body.vert #wave i{width:24px;height:2px;transform:scaleX(.1);
+background:linear-gradient(90deg,var(--t1),var(--t2) 46%,var(--t3))}
 body.vert #wave i.q{background:#5F5880;box-shadow:none}
+body.vert #wave i.hot{background:linear-gradient(90deg,#FFE7AE,#F2B544 46%,#D98E16);
+box-shadow:0 0 6px rgba(242,181,68,.6)}
 body.vert #t{font-size:12.5px;writing-mode:vertical-rl;transform:rotate(180deg)}
-/* the receipt kills the scan. Stated for both orientations because
-   `body.vert #proc-l::before` out-specifies a lone `body.flash` one, which
-   would have left the sweep running underneath the finished number. */
 body.flash #proc-l::before,body.vert.flash #proc-l::before{
-animation:none;background-image:none}
+animation:none;transform:translateX(300%)}
 body.vert #proc-l{padding:9px 0}
 body.vert .pwork{flex-direction:column;gap:8px}
 body.vert #pdots{flex-direction:column;gap:3px}
@@ -406,42 +359,129 @@ body.vert #rc-w{font-size:9px;letter-spacing:.03em}
 body.vert #fail-l{flex-direction:column;padding:11px 0}
 body.vert #fail-l b{writing-mode:vertical-rl;transform:rotate(180deg);
 min-width:auto;min-height:0}
-/* -- upright hover: 54x178. Grip on top, the two readouts running up the
-      column, the three 26px buttons stacked at the bottom where the hand
-      already is — cancel last, nearest the thumb. Budget: 8 grip + 78
-      buttons + 4 gaps of 5 + 16 padding = 122, leaving 56 for the text,
-      which is why the sub-line is allowed to ellipsis rather than wrap. */
+/* upright hover: 54x178 */
 body.vert #hov-l{flex-direction:column;gap:5px;padding:8px 0}
 body.vert #grip{width:18px;height:8px;margin:0 0 1px;
 background-size:4px 4px}
 body.vert .htxt{align-items:center;justify-content:center;
 width:100%;min-height:0}
-/* The sub-line is DROPPED upright. 178px minus the grip, the button stack
-   and its gaps leaves 56px of column, and "ESC CANCELS" at 8.5px needs
-   ~60 — it ellipsised to "ESC CANC…", which is worse than absent. The
-   headline gets the whole column instead, and everything the sub-line
-   carried (engine, download clock, hotkey) is a right-click away in the
-   panel. The one reading it existed to give mid-take — "not hearing you" —
-   survives without it: #recwash still desaturates the whole slab. */
 body.vert #hov-s{display:none}
-/* vertical-rl + rotate(180deg) is the read-upward idiom */
 body.vert #hov-t{writing-mode:vertical-rl;transform:rotate(180deg);
 font-size:11.5px;text-align:center;max-height:100%}
+/* The Variable Text cut sets wider than the old face: "Ready · F9" no
+   longer fit the 54px it was clamped to and ellipsised to "Ready ·…". The
+   column has 84px; let the headline take its natural length. */
+body.vert #hov-t{max-height:none;flex:none;font-size:11px;letter-spacing:0}
+/* same cause: "214 WORDS 138 wpm" measures 128px of the 148px available
+   but wrapped "wpm" onto a second line. It fits; it must not wrap. */
+#recap{white-space:nowrap}
 
-/* ==== TRAVELLING BETWEEN DOCKS =========================================
-   The window slides along the screen edge and the orientation flips
-   mid-flight; without this the contents reflow every frame and strobe.
-   Hold a quiet slab for the trip. */
+/* ==== WHERE THE TAKE GOES ==============================================
+   Notebook take: glyph reads clearly at 11px, ribbon violet. */
+#tmode{display:none;flex:none;width:11px;height:11px;color:#C6B4FF}
+#tmode svg{display:none;width:11px;height:11px}
+body.take-note #tmode,body.take-command #tmode,body.take-refine #tmode{display:block}
+body.take-note #tmode .g-note{display:block}
+body.take-command #tmode .g-edit,body.take-refine #tmode .g-edit{display:block}
+body.take-note #rec-l{--t1:#E6DCFF;--t2:#9C86F6;--t3:#6C55E8;--tg:rgba(156,134,246,.55)}
+
+/* ==== BRIEF OVERLAYS ON THE RIBBON ===================================== */
+#esc-hint,#micflash{display:none;position:absolute;inset:0;align-items:center;
+justify-content:center;padding:0 10px;
+font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:11px;font-weight:600;
+pointer-events:none;background:rgba(23,19,26,.96);border-radius:inherit}
+#esc-hint{color:#FFC6BD}
+#micflash{color:#DCD2FF}
+#micflash span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.esc-armed #esc-hint{display:flex}
+body.mic-flash #micflash{display:flex}
+body.vert #esc-hint,body.vert #micflash{padding:10px 0}
+body.vert #esc-hint,body.vert #micflash span{writing-mode:vertical-rl;
+transform:rotate(180deg)}
+
+/* ==== CANCELLED - UNDO ================================================= */
+#cancel-l{gap:8px;padding:0 7px 0 12px;justify-content:space-between}
+#cancel-t{font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:12px;font-weight:600;color:#E9E2F7;white-space:nowrap}
+#btn-undo{width:auto;height:24px;padding:0 11px;
+font-family:'Segoe UI Variable Text','Segoe UI',sans-serif;
+font-size:11.5px;font-weight:600}
+#undo-bar{position:absolute;left:0;right:0;bottom:0;height:2px;background:#9C86F6;
+transform-origin:left center;animation:undoDrain 10s linear both}
+@keyframes undoDrain{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@keyframes undoDrainV{from{transform:scaleY(1)}to{transform:scaleY(0)}}
+body.vert #cancel-l{flex-direction:column;padding:10px 0;justify-content:center;gap:10px}
+body.vert #cancel-t{writing-mode:vertical-rl;transform:rotate(180deg)}
+body.vert #btn-undo{width:26px;height:auto;padding:10px 0;writing-mode:vertical-rl;
+transform:rotate(180deg)}
+body.vert #undo-bar{left:auto;right:0;top:0;bottom:0;width:2px;height:auto;
+transform-origin:center bottom;animation-name:undoDrainV}
+
+/* ==== PANEL ADDITIONS ================================================== */
+.tbtn{height:20px;padding:0 7px;border:0;border-radius:6px;flex:none;cursor:pointer;
+font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:10px;font-weight:600;color:#B7ADDE;
+background:rgba(247,244,236,.07);transition:background .14s,color .14s}
+.tbtn:hover{background:rgba(156,134,246,.28);color:#fff}
+.tbtn:focus-visible{outline:2px solid #9C86F6;outline-offset:1px}
+#mic-t{flex:0 1 auto;max-width:48%;min-width:0;
+font-family:'Segoe UI Variable Small','Segoe UI',sans-serif;
+font-size:9.5px;font-weight:600;
+color:#8C82B6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ==== LIGHT THEME ======================================================
+   The BAR stays dark ink in both themes — parchment vanished on a light
+   desktop in testing. Only the 232x150 PANEL goes parchment. */
+body.light{--edge-hi:#5E534A;--edge-lo:#302928}
+body.light #panel-l{
+background:linear-gradient(180deg,var(--lt-surface),var(--lt-bg));
+border-radius:inherit;
+box-shadow:inset 0 0 0 1px var(--lt-border)}
+body.light #panel-l .ph{
+background:linear-gradient(90deg,var(--lt-border),rgba(229,218,196,.02)) bottom left/100% 1px no-repeat}
+body.light #panel-l .ph b{color:var(--lt-text)}
+body.light #eng{background:linear-gradient(180deg,rgba(35,30,23,.06),rgba(35,30,23,.02));
+box-shadow:inset 0 0 0 1px rgba(35,30,23,.12)}
+body.light #eng-t{color:var(--lt-text2)}
+body.light #mic-t{color:var(--lt-muted)}
+body.light .pstat{background:linear-gradient(180deg,rgba(35,30,23,.06),rgba(35,30,23,.02));
+box-shadow:inset 0 0 0 1px rgba(35,30,23,.12)}
+body.light .pstat b{color:var(--lt-text);font-weight:650}
+body.light .pstat span{color:var(--lt-muted)}
+body.light #panel-l .plab{color:var(--lt-muted)}
+body.light #panel-l #panel-hint{color:var(--lt-text2)}
+body.light #dock button{border-color:var(--lt-border);
+background:linear-gradient(180deg,rgba(35,30,23,.04),rgba(35,30,23,.01));
+box-shadow:inset 0 0 8px rgba(90,65,30,.12)}
+body.light #dock button::before{
+background:linear-gradient(90deg,rgba(255,255,255,0) 14%,rgba(255,255,255,.6) 50%,
+rgba(255,255,255,0) 86%) top left/100% 1px no-repeat}
+body.light #dock button:hover{background:linear-gradient(180deg,rgba(108,85,232,.12),rgba(108,85,232,.04));
+border-color:rgba(108,85,232,.4)}
+body.light #dock button.on{background:linear-gradient(180deg,rgba(108,85,232,.18),rgba(108,85,232,.06));
+border-color:var(--lt-accent);box-shadow:inset 0 0 8px rgba(108,85,232,.18)}
+body.light .tbtn{background:rgba(35,30,23,.08);color:var(--lt-text2)}
+body.light .tbtn:hover{background:rgba(108,85,232,.2);color:var(--lt-accent-text)}
+body.light #btn-panel-close{background:rgba(35,30,23,.08);color:var(--lt-text2)}
+body.light #btn-panel-close:hover{background:rgba(208,69,62,.18);color:#A03028}
+/* glows become tints, cap at .35 */
+body.light #eng-dot{box-shadow:none}
+body.light #dock button.on i{box-shadow:0 0 4px rgba(108,85,232,.35)}
+
+/* the bar is off screen: stop every CSS animation */
+body.asleep *,body.asleep *::before,body.asleep *::after{
+animation-play-state:paused!important}
+
+/* ==== TRAVELLING BETWEEN DOCKS ========================================= */
 body.moving .layer,body.moving #recwash,body.moving #flashrim,
 body.moving #failwash{opacity:0;transition:opacity .1s}
 body.moving{box-shadow:inset 0 0 0 1px rgba(247,244,236,.16),
 inset 0 0 20px rgba(108,85,232,.35)}
 
 /* ==== STATE VISIBILITY =================================================
-   Every rule below is exactly one class + one id, so they resolve purely
-   by source order. Do not reorder, and do not add a second class to any of
-   them — a `body.mini:not(.hov)` capsule radius once clipped the 232x150
-   panel into an ellipse by out-specifying the panel's own. */
+   Every rule below is exactly one class + one id, resolved by source order.
+   Do not reorder, and do not add a second class. */
 .layer,#recwash,#flashrim,#failwash{display:none}
 body.mini #core-l{display:flex}
 body.rec #rec-l{display:flex}
@@ -456,30 +496,31 @@ body.panel #hov-l,body.panel #fail-l{display:none}
 body.panel #panel-l{display:flex}
 body.failed #fail-l{display:flex}
 body.failed #failwash{display:block}
-/* hover wins over every non-failure layer. These MUST be id-level: a
-   `body.hov .layer{display:none}` loses to `body.rec #rec-l{display:flex}`
-   on specificity, which left the clock painting through the controls.
-   Equal specificity to the rules above, so they must also stay LAST. */
+body.cancelled #cancel-l{display:flex}
+body.panel #cancel-l{display:none}
+body.morph #rec-l{display:flex}
+body.morph #proc-l{display:none}
+body.morph #t{opacity:0;transition:opacity .15s}
+body.morph #tmode{opacity:0;transition:opacity .15s}
+/* hover wins over every non-failure layer. These MUST stay LAST. */
 body.hov #core-l,body.hov #rec-l,body.hov #proc-l{display:none}
 body.hov #hov-l{display:flex}
 
 @media (prefers-reduced-motion:reduce){
  #core,#core::before,#t,#wave,.pwork,#pdots i,#recap,#flashrim,#fail-l,
  #eng-bar,#proc-l::before,body.vert #proc-l::before{animation:none!important}
- /* every resting state must still be the finished object */
  #core{opacity:1}#core::before{opacity:1}
  #recap{opacity:1;transform:none}
  #flashrim{opacity:1}
  #pdots i{opacity:1;transform:none}
- /* a frozen sweep would leave a violet band parked at one edge */
- #proc-l::before,body.vert #proc-l::before{background-image:none}
- /* the two signals that work is genuinely still running are slowed, never
-    killed — a frozen shuttle during a 1.5GB download reads as a hang */
+ #proc-l::before,body.vert #proc-l::before{transform:translateX(300%)}
  #core::after{animation:shuttleH 3s linear infinite!important}
  body.vert #core::after{animation:shuttleV 3s linear infinite!important}
  #eng-bar{display:none}
- body.eng-warm #eng-bar{display:block;animation:engBar 3s linear infinite!important}
+ body.eng-warm #eng-bar{display:block;animation:engBarH 3s linear infinite!important}
  .pbtn,#grip,#dock button,#dock button i,#wave i,#recwash{transition:none}
+ #wave-track{transform:none!important}
+ #undo-bar{animation:none!important}
 }
 </style></head><body class="mini tab dock-bottom">
 <div id="recwash"></div><div id="flashrim"></div><div id="failwash"></div>
@@ -487,8 +528,21 @@ body.hov #hov-l{display:flex}
 <div class="layer" id="core-l" data-od-id="idle-layer"><div id="core"></div></div>
 
 <div class="layer" id="rec-l" data-od-id="recording-layer">
+ <!-- where this take goes: shown only when it is NOT a plain dictation -->
+ <i id="tmode" data-od-id="take-mode" aria-hidden="true">
+  <svg class="g-note" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+   stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+   <path d="M7 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H7"/><path d="M7 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2"/>
+   <line x1="10" y1="9" x2="15" y2="9"/><line x1="10" y1="13" x2="15" y2="13"/></svg>
+  <svg class="g-edit" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+   stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+   <path d="M4 20h4L19 9l-4-4L4 16v4z"/></svg>
+ </i>
  <div id="t">0:00</div>
  <div id="wave" data-od-id="level-history"></div>
+ <!-- overlays that briefly take the ribbon's place -->
+ <div id="esc-hint" data-od-id="esc-hint">Esc again to discard</div>
+ <div id="micflash" data-od-id="mic-flash"></div>
 </div>
 
 <div class="layer" id="proc-l" data-od-id="processing-layer">
@@ -503,21 +557,31 @@ body.hov #hov-l{display:flex}
 
 <div class="layer" id="fail-l" data-od-id="failed-layer">
  <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-  <circle cx="12" cy="12" r="10" fill="#F26B5E"/>
+  <circle cx="12" cy="12" r="10" fill="#D0453E"/>
   <g stroke="#2A1216" stroke-width="2.8" stroke-linecap="round">
    <line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></g></svg>
  <b id="fail-t">Transcription failed</b>
 </div>
 
+<div class="layer" id="cancel-l" data-od-id="cancelled-layer">
+ <b id="cancel-t">Cancelled</b>
+ <button class="pbtn" id="btn-undo" title="Finish this take after all" data-od-id="btn-undo">Undo</button>
+ <!-- drains over the undo window, so the time left is felt, not read -->
+ <em id="undo-bar"></em>
+</div>
+
 <div class="layer" id="panel-l" data-od-id="panel-layer">
  <div class="ph"><b id="panel-t">Ready</b>
+  <button class="tbtn" id="btn-snooze" title="Hide the bar for an hour. Recording still shows it."
+   data-od-id="btn-snooze">Hide 1h</button>
   <button class="pbtn" id="btn-panel-close" title="Close" data-od-id="panel-close">
    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     stroke-width="2.8" stroke-linecap="round">
     <line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>
  </div>
  <div id="eng" data-od-id="engine-status">
-  <i id="eng-dot"></i><span id="eng-t">Local engine</span><em id="eng-bar"></em>
+  <i id="eng-dot"></i><span id="eng-t">Local engine</span>
+  <span id="mic-t" title="Microphone in use" data-od-id="mic-name"></span><em id="eng-bar"></em>
  </div>
  <div class="pstats" data-od-id="panel-stats">
   <div class="pstat"><b id="ps-takes">0</b><span>Takes</span></div>
@@ -544,6 +608,10 @@ body.hov #hov-l{display:flex}
    stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
    <path d="M14 4h6v6"/><path d="M20 4l-9 9"/>
    <path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></button>
+ <button class="pbtn" id="btn-copy" title="Copy the last take again" data-od-id="btn-copy">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+   stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+   <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg></button>
  <button class="pbtn warn" id="btn-cancel" title="Cancel (right-click anywhere, or Esc)" data-od-id="btn-cancel">
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
    stroke-width="2.6" stroke-linecap="round">
@@ -563,20 +631,32 @@ let takes=0,words=0,lastWords=0,lastWpm=0;
    long first-run download is given an elapsed clock of our own to make its
    progress felt without inventing a percentage. */
 let engMode='local',engStatus='idle',engDev='',engAt=0;
+/* the take in progress: where it goes, how long it may run, which mic, and
+   whether the mic is clipping */
+let takeMode='dictate',capS=0,micName='',lastMic='',clip=false;
+/* brief, time-boxed readings (performance.now() deadlines) */
+let escUntil=0,micUntil=0,morphUntil=0;
+/* last take outcome: a take exists to copy again; the paste went nowhere */
+let hasLast=false,lastBlind=false,ending=false,isLight=false;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---- the level history ribbon ----
    16 samples at 130ms = 2.08s of the recent past on screen. 16 teeth of
    2px plus 15 gaps of 3px is 77px, which still fits the ~81px the ribbon
    is left with at 150x38 once a two-digit-minute clock has taken its
-   share. */
-const NB=16,SHIFT=130,MAXH=20,MAXV=24;
-const hist=new Array(NB).fill(0);
-const quiet=new Array(NB).fill(null);
-let lastShift=0;
+   share. One EXTRA tooth rides just outside the leading edge: it is the live
+   sample, sliding in as the track glides (see drawWave). */
+const NB=16,SHIFT=130,MAXH=20,MAXV=24,PITCH=5;
+const hist=new Array(NB+1).fill(0);
+const quietRaw=new Array(NB+1).fill(true);
+const hot=new Array(NB+1).fill(false);
+let shiftAt=0;
 const root=document.documentElement;
 const wave=document.getElementById('wave');
+const track=document.createElement('div');
+track.id='wave-track';wave.appendChild(track);
 const bars=[];
-for(let i=0;i<NB;i++){const b=document.createElement('i');wave.appendChild(b);bars.push(b);}
+for(let i=0;i<=NB;i++){const b=document.createElement('i');track.appendChild(b);bars.push(b);}
 const pd=document.getElementById('pdots');
 for(let i=0;i<3;i++)pd.appendChild(document.createElement('i'));
 const elT=document.getElementById('t');
@@ -585,9 +665,13 @@ const elHov=document.getElementById('hov-t');
 const elHovS=document.getElementById('hov-s');
 const elPanelT=document.getElementById('panel-t');
 const elEngT=document.getElementById('eng-t');
+const elMic=document.getElementById('mic-t');
 const recap=document.getElementById('recap');
 const rcN=document.getElementById('rc-n');
 const rcW=document.getElementById('rc-w');
+const micFlashEl=document.getElementById('micflash');
+const micFlashSpan=document.createElement('span');micFlashEl.appendChild(micFlashSpan);
+const undoBar=document.getElementById('undo-bar');
 
 function pyapi(fn){
  if(window.pywebview&&window.pywebview.api&&window.pywebview.api[fn])
@@ -600,6 +684,13 @@ function secs(ms){const s=ms/1000;return s<10?s.toFixed(1)+'s':Math.round(s)+'s'
 function elapsed(){return startedAt?Math.max(0,Date.now()/1000-startedAt):0;}
 function engReady(){return engStatus==='ready'||engStatus==='idle';}
 function engWarm(){return engStatus==='downloading'||engStatus==='loading';}
+function isFlash(){return base.indexOf('flash')>=0;}
+function escArmed(){return performance.now()<escUntil;}
+function micFlash(){return performance.now()<micUntil;}
+function morphing(){return performance.now()<morphUntil;}
+/* the clock counts DOWN for the last minute before the length cap */
+function remaining(){return capS?capS-elapsed():Infinity;}
+function clockText(){const r=remaining();return r<=60?fmt(r)+' left':fmt(elapsed());}
 /* what the engine is, in the four words the panel row has space for */
 function device(){
  if(engMode==='cloud')return'Cloud engine';
@@ -607,13 +698,27 @@ function device(){
  if(engDev==='cpu')return'Local · CPU';
  return'Local engine';
 }
+function where(){
+ return takeMode==='note'?'Notebook':takeMode==='command'?'Edit':
+  takeMode==='refine'?'Refine':'';
+}
 /* the one status string, in two registers: headline and sub-line. Both
    readouts and the panel title carry it, so there is one source of truth
    about what this thing is doing. */
 function label(){
- if(base==='rec')return['Rec '+fmt(elapsed()),hearing?'Esc cancels':'No sound'];
- if(base.indexOf('flash')>=0)
+ if(base==='rec'){
+  const w=where();
+  /* "Notebook · Esc cancels" ellipsised in the 190x46 hover. Where the take
+     goes is the thing worth the room; the cancel button is right beside it */
+  const sub=!hearing?'No sound':escArmed()?'Esc again to discard':
+   (w||'Esc cancels');
+  return['Rec '+clockText(),sub];
+ }
+ if(base==='cancelled')return['Cancelled','Undo to finish it'];
+ if(isFlash()){
+  if(lastBlind)return['Copied','Ctrl+V to paste'];
   return[lastWords?lastWords+' words':'Done',lastWpm?lastWpm+' wpm':''];
+ }
  if(base==='processing')return['Writing…',device()];
  if(base==='failed')return['Transcription failed',''];
  if(engStatus==='downloading')
@@ -622,8 +727,7 @@ function label(){
  if(engStatus==='failed')return['Engine offline','Click to open'];
  return['Ready · '+RECKEY,engDev==='cpu'?'CPU · slower':device()];
 }
-/* cached so the raf loop is not writing textContent on four nodes sixty
-   times a second for nothing */
+/* cached so nothing writes textContent on four nodes for no change */
 let lastTxt='';
 function say(){
  const p=label(),k=p[0]+' '+p[1];
@@ -635,7 +739,7 @@ function paint(){
  /* panel outranks hover, hover overlays the working state, and failure
     outranks hover so a failed take is never hidden by the cursor.
     `tab` is the resting handle look — only when idle AND untouched. */
- const hov=hovering&&base!=='failed'&&!panelOpen;
+ const hov=hovering&&base!=='failed'&&base!=='cancelled'&&!panelOpen;
  /* `vert` stays ON while hovering. Python sizes the hovered window to
     VHOVER 54x178 on a side dock — it CANNOT be the wide 190x46 box,
     because a hover box has to contain the 38x150 bar it grew from on both
@@ -643,6 +747,7 @@ function paint(){
     forever. So the upright dock gets an upright control stack. Only the
     panel is horizontal on every dock, because 232x150 always is. */
  if(base!=='rec'){hearing=false;disp=0;root.style.setProperty('--lv',0);}
+ const rec=base==='rec';
  document.body.className=base
   +(panelOpen?' panel':(hov?' hov':''))
   +((vertical&&!panelOpen)?' vert':'')
@@ -652,10 +757,23 @@ function paint(){
   +(engWarm()?' eng-warm':'')
   +(engStatus==='failed'?' eng-fail':'')
   +((engStatus==='ready'&&engDev==='cpu')?' eng-cpu':'')
+  +(rec&&takeMode!=='dictate'?' take-'+takeMode:'')
+  +(rec&&escArmed()?' esc-armed':'')
+  +(rec&&micFlash()?' mic-flash':'')
+  +(rec&&ending?' ending':'')
+  +(morphing()?' morph':'')
+  +(isFlash()&&lastBlind?' blind':'')
+  +(isLight?' light':'')
+  +(document.hidden?' asleep':'')
   +' dock-'+dock;
  lastTxt='';say();
  document.getElementById('btn-cancel').style.display=busy?'flex':'none';
+ /* idle hover offers the last take again instead of Cancel - same slot, so
+    the hover bar never changes width */
+ document.getElementById('btn-copy').style.display=
+  (!busy&&hasLast&&base!=='cancelled')?'flex':'none';
  stats();
+ kick();
 }
 function stats(){
  document.getElementById('ps-takes').textContent=takes;
@@ -670,6 +788,8 @@ function stats(){
   engStatus==='downloading'?'Downloading model'+(engAt?' · '+fmt((Date.now()-engAt)/1000):''):
   engStatus==='loading'?'Loading model':
   engStatus==='failed'?'Engine unavailable':device();
+ elMic.textContent=micName;
+ elMic.title=micName?'Microphone: '+micName:'';
  /* the hint line is the only surface with room for words, so it is where
     the shortcuts get taught — and where a stalled first run gets explained */
  document.getElementById('panel-hint').textContent=
@@ -692,33 +812,67 @@ function setPanel(on){
   window.pywebview.api.pill_panel(on);
 }
 function resetWave(){
- for(let i=0;i<NB;i++){hist[i]=0;quiet[i]=null;}
- lastShift=0;
+ for(let i=0;i<=NB;i++){hist[i]=0;quietRaw[i]=true;hot[i]=false;}
+ shiftAt=0;
+ for(const b of bars){b.style.transition='';b._q=b._h=undefined;}
 }
 function renderRecap(){
+ /* the paste went nowhere (desktop or taskbar had focus): the receipt
+    becomes an instruction, since a word count would be a lie about where
+    the text went */
+ if(lastBlind){
+  recap.classList.add('bare');
+  rcN.textContent='Copied · Ctrl+V';rcW.textContent='';return;
+ }
  const has=lastWords>0;
  recap.classList.toggle('bare',!has);
  rcN.textContent=has?String(lastWords):'Done';
  rcW.textContent=lastWpm?lastWpm+' wpm':'';
 }
+/* recording -> processing: roll the teeth down newest-first, then let the
+   writing dots rise. Transform only. */
+function morphOut(){
+ if(reduced)return;
+ morphUntil=performance.now()+380;
+ const s=vertical?'scaleX(.06)':'scaleY(.06)';
+ for(let i=0;i<=NB;i++){
+  const b=bars[i];
+  b.style.transition='transform .22s cubic-bezier(.4,0,1,1) '+((NB-i)*12)+'ms';
+  b.style.transform=s;
+ }
+ setTimeout(paint,400);
+}
 window.app={
- start(ts){startedAt=ts;lvl=0;disp=0;hearing=false;resetWave();
+ /* take = {mode, cap, mic}. Older engines send no second argument. */
+ start(ts,take){
+  take=take||{};
+  startedAt=ts;lvl=0;disp=0;hearing=false;clip=false;ending=false;
+  escUntil=0;morphUntil=0;resetWave();
+  takeMode=take.mode||'dictate';capS=take.cap||0;
+  const m=take.mic||'';
+  /* flash the mic only when it CHANGED since the last take - a headset
+     plugged in moves the Windows default under you, silently */
+  micUntil=(m&&lastMic&&m!==lastMic)?performance.now()+1500:0;
+  if(micUntil){micFlashSpan.textContent=m;setTimeout(paint,1520);}
+  if(m){micName=m;lastMic=m;}
   base='rec';busy=true;paint();},
- level(v){lvl=v;},
+ level(v,c){lvl=v;clip=!!c;},
  /* '' is a REAL state — the blank frame held while the window resizes.
     Coercing it to mini painted the idle filament at full expanded width
     for the whole collapse. */
  mode(m){const next=(m===undefined||m===null)?'mini':m;
   if(next==='processing'&&base!=='processing'){
    takeLen=elapsed()||6;procAt=Date.now();
+   if(base==='rec')morphOut();
   }
   base=next;busy=(m==='processing');paint();},
- /* summary = {words, secs, wpm, cleaned} or null. `cleaned` is not shown:
-    nothing on this page can honestly say what it means yet. */
+ /* summary = {words, secs, wpm, cleaned, blind} or null. `cleaned` is not
+    shown: nothing on this page can honestly say what it means yet. */
  done(sum){
   takes++;
+  lastBlind=!!(sum&&sum.blind);
   if(sum&&sum.words){
-   lastWords=sum.words|0;words+=lastWords;
+   lastWords=sum.words|0;words+=lastWords;hasLast=true;
    lastWpm=Math.round(sum.wpm||(sum.secs?sum.words/(sum.secs/60):0))||0;
   }else{lastWords=0;lastWpm=0;}
   renderRecap();
@@ -726,6 +880,15 @@ window.app={
  failed(msg){base='failed';busy=false;
   if(msg)document.getElementById('fail-t').textContent=msg;
   paint();},
+ /* a long take got ONE Esc: say what a second one does, then stand down */
+ escArmed(ms){escUntil=performance.now()+(ms||2000);paint();
+  setTimeout(paint,(ms||2000)+30);},
+ /* a take was just cancelled and can still be finished */
+ cancelled(ms){
+  undoBar.style.animationDuration=(ms||10000)+'ms';
+  base='cancelled';busy=false;hovering=false;paint();},
+ mic(name){micName=name||'';if(micName)lastMic=micName;stats();},
+ theme(dark){isLight=!dark;paint();},
  reckey(k){RECKEY=(k||'f9').toUpperCase();paint();},
  pos(p){setDock(p);},
  vert(on){vertical=!!on;paint();},
@@ -744,7 +907,7 @@ window.app={
 };
 const body=document.body;
 body.addEventListener('mouseenter',()=>{
- if(base==='failed'||panelOpen||moving)return;
+ if(base==='failed'||base==='cancelled'||panelOpen||moving)return;
  hovering=true;pyapi('pill_hover_in');paint();});
 body.addEventListener('mouseleave',()=>{
  if(panelOpen||dragging)return;
@@ -753,6 +916,17 @@ document.getElementById('btn-cancel').addEventListener('click',e=>{
  e.stopPropagation();pyapi('pill_cancel');});
 document.getElementById('btn-open').addEventListener('click',e=>{
  e.stopPropagation();pyapi('pill_open');});
+document.getElementById('btn-copy').addEventListener('click',e=>{
+ e.stopPropagation();pyapi('pill_copy_last');
+ const b=e.currentTarget;b.classList.add('done');
+ setTimeout(()=>b.classList.remove('done'),900);});
+document.getElementById('btn-undo').addEventListener('click',e=>{
+ e.stopPropagation();pyapi('pill_undo');});
+document.getElementById('btn-snooze').addEventListener('click',e=>{
+ e.stopPropagation();
+ /* Python closes the panel and hides the window itself; calling pill_panel
+    here as well would race it into resizing a window that is going away */
+ panelOpen=false;hovering=false;paint();pyapi('pill_snooze');});
 document.getElementById('btn-panel').addEventListener('click',e=>{
  e.stopPropagation();setPanel(true);});
 document.getElementById('btn-panel-close').addEventListener('click',e=>{
@@ -776,7 +950,8 @@ document.getElementById('fail-l').addEventListener('click',()=>{
    for a 26px button mid-sentence. Both route through bridge calls that
    already exist. */
 body.addEventListener('dblclick',e=>{
- if(base==='failed'||e.target.closest('.pbtn')||e.target.closest('#dock'))return;
+ if(base==='failed'||base==='cancelled'||e.target.closest('.pbtn')||
+    e.target.closest('.tbtn')||e.target.closest('#dock'))return;
  setPos({bottom:'right',right:'left',left:'bottom'}[dock]||'bottom');});
 body.addEventListener('contextmenu',e=>{
  e.preventDefault();
@@ -786,6 +961,9 @@ window.addEventListener('keydown',e=>{
  if(e.key!=='Escape')return;
  if(panelOpen){setPanel(false);return;}
  if(busy)pyapi('pill_cancel');});
+/* hidden page (snoozed, stepped aside): paint() adds `asleep`, which pauses
+   every CSS animation; the frame loop stops on its own via kick() */
+document.addEventListener('visibilitychange',paint);
 
 /* ---- drag ----
    WM_NCLBUTTONDOWN cannot work from the JS bridge thread (ReleaseCapture is
@@ -819,50 +997,96 @@ function startDrag(ev){
 document.getElementById('hov-l').addEventListener('pointerdown',startDrag);
 document.querySelector('#panel-l .ph').addEventListener('pointerdown',startDrag);
 
-function drawWave(){
+/* ---- the ribbon ----
+   f is how far we are between two samples (0..1). The track sits one pitch
+   PAST the leading edge at f=0 and glides home by f=1, so the live sample
+   slides in while it grows with his voice. On each new sample the values
+   re-index and f resets to 0: every tooth lands exactly where it already
+   was, so there is no visible jump - the old ribbon hopped every 130ms. */
+function drawWave(f){
+ const off=((1-f)*PITCH).toFixed(2)+'px';
+ track.style.transform=vertical?'translateY('+off+')':'translateX('+off+')';
  const max=vertical?MAXV:MAXH;
- for(let i=0;i<NB;i++){
-  const v=hist[i],b=bars[i];
-  const px=(2+v*(max-2)).toFixed(1)+'px';
-  /* the contract Python's layout depends on: height horizontally, width
-     upright. Each tooth is centre-aligned, so one dimension grows it out
-     of the spine in both directions. */
-  if(vertical){b.style.width=px;b.style.height='2px';}
-  else{b.style.height=px;b.style.width='2px';}
-  const q=v<0.08;
-  if(quiet[i]!==q){quiet[i]=q;b.classList.toggle('q',q);}
+ for(let i=0;i<=NB;i++){
+  const b=bars[i];
+  const s=((2+hist[i]*(max-2))/max).toFixed(3);
+  b.style.transform=vertical?'scaleX('+s+')':'scaleY('+s+')';
+  /* A tooth goes grey only when a NEIGHBOUR was quiet too. One quiet sample
+     between two syllables used to flash grey mid-word, which reads as the
+     mic dropping out; a real pause (260ms+) still greys fully. */
+  const q=quietRaw[i]&&((i>0&&quietRaw[i-1])||(i<NB&&quietRaw[i+1]));
+  if(b._q!==q){b._q=q;b.classList.toggle('q',q);}
+  if(b._h!==hot[i]){b._h=hot[i];b.classList.toggle('hot',hot[i]);}
  }
 }
-function raf(){
- const cl=document.body.classList;
- if(cl.contains('rec')){
-  const s=elapsed();
-  if(startedAt)elT.textContent=fmt(s);
+
+/* ---- the frame loop ----
+   It used to run 60+ times a second ALL DAY, idle included. It now runs
+   only while something on screen is actually moving, and stops itself the
+   moment nothing is. The idle filament's breathing is a CSS animation and
+   never needed a frame loop at all. */
+let rafOn=false,lastT=0,lastClock='',lastPtime='';
+function needsFrames(){
+ if(document.hidden)return false;
+ return base==='rec'||(base==='processing'&&!isFlash())||
+  ((hovering||panelOpen)&&engStatus==='downloading');
+}
+function kick(){
+ if(rafOn||!needsFrames())return;
+ rafOn=true;lastT=0;requestAnimationFrame(frame);
+}
+function frame(now){
+ if(!needsFrames()){rafOn=false;return;}
+ /* frame-rate independent: the old per-frame 0.5 / 0.12 factors made the
+    release twice as fast on a 144Hz screen as on a 60Hz one */
+ const dt=lastT?Math.min(.1,(now-lastT)/1000):1/60;lastT=now;
+ if(base==='rec'){
+  const c=clockText();
+  if(c!==lastClock){lastClock=c;elT.textContent=c;}
+  const end=remaining()<=60;
+  if(end!==ending){ending=end;paint();}
   /* `lvl` already arrives as a perceptual 0..1, auto-ranged to this
      microphone by the engine. It used to be raw RMS scaled by 9 here — on
      a quiet mic that put every voiced block under the gate and the bar
      showed silence the whole time he spoke. Do not reintroduce a
-     multiplier. */
+     multiplier.
+     Attack ~20ms, release ~200ms: a meter that jumps up with a syllable and
+     eases down, the way broadcast level meters behave. */
   const target=Math.max(0,Math.min(1,lvl));
-  disp+=(target-disp)*(target>disp?0.5:0.12);
+  const tau=target>disp?.02:.2;
+  disp+=(target-disp)*(1-Math.exp(-dt/tau));
   root.style.setProperty('--lv',disp.toFixed(3));
   /* hysteresis, so a voice sitting on the threshold cannot strobe the whole
      slab between its heard and unheard looks */
+  const cl=document.body.classList;
   if(hearing?disp<0.06:disp>0.12){hearing=!hearing;cl.toggle('hearing',hearing);}
-  const now=performance.now();
-  if(now-lastShift>=SHIFT){lastShift=now;hist.shift();hist.push(disp);}
+  /* shiftAt advances by exactly SHIFT, so sample timing never drifts; after
+     a stall it catches up rather than bunching samples together */
+  if(!shiftAt)shiftAt=now;
+  let guard=0;
+  while(now-shiftAt>=SHIFT&&guard++<NB+1){
+   shiftAt+=SHIFT;
+   hist.shift();hist.push(disp);
+   quietRaw.shift();quietRaw.push(disp<0.08);
+   hot.shift();hot.push(false);
+  }
+  if(now-shiftAt>=SHIFT)shiftAt=now;
   /* the leading sample stays live between shifts, so the ribbon is a
      history that still moves with his voice rather than a slideshow */
-  hist[NB-1]=disp;
-  drawWave();
+  hist[NB]=disp;quietRaw[NB]=disp<0.08;
+  if(clip)hot[NB]=true;             // latched for the life of the sample
+  drawWave(Math.min(1,(now-shiftAt)/SHIFT));
   if(panelOpen)stats();
- }else if(cl.contains('processing')){
-  if(!cl.contains('flash'))elPtime.textContent=secs(Date.now()-procAt);
+  if(hovering||panelOpen)say();
+ }else if(base==='processing'){
+  const p=secs(Date.now()-procAt);
+  if(p!==lastPtime){lastPtime=p;elPtime.textContent=p;}
+ }else if(engStatus==='downloading'){
+  say();if(panelOpen)stats();
  }
- if(hovering||panelOpen)say();
- if(panelOpen&&engStatus==='downloading')stats();
- requestAnimationFrame(raf);}
-requestAnimationFrame(raf);
+ requestAnimationFrame(frame);
+}
+kick();
 /* Ask Python for our state rather than waiting to be told. Its startup
    pushes (dock, hotkey, engine) fire on a timer a second or two after boot
    and are silently dropped if this page has not finished loading — which is

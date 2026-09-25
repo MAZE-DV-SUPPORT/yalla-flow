@@ -61,7 +61,7 @@ if (getattr(sys, "frozen", False)
             except OSError:
                 pass
 
-APP_VERSION = "5.3.0"
+APP_VERSION = "5.4.0"
 PILL_W, PILL_H = 150, 38    # expanded (recording/processing)
 MINI_W, MINI_H = 76, 16     # idle: the edge tab, flush to the docked edge
 HOVER_W, HOVER_H = 190, 46  # hovered: status text + cancel / open controls
@@ -118,6 +118,13 @@ DEFAULT_SETTINGS = {
     "command_key": "f8",
     "refine_key": "f4",
     "note_key": "f7",
+    # Hold the GPU off deep idle while recording, so the 7W -> 100W wake-up
+    # lands while he is talking instead of the moment he stops. OFF by default
+    # (09-25): the blanking turned out to be this laptop's power delivery
+    # failing the spike - the same transient hard-powers the machine off - and
+    # holding the GPU at ~49W for the whole take ADDS sustained load to the
+    # thing that is failing. It only removes the P-state wake, not the watts.
+    "gpu_hold": False,
     "chime_on": True,
     "chime_volume": 40,
     "mic_device": "",
@@ -605,6 +612,41 @@ def _strip_loop(text):
     return " ".join(out)
 
 
+def _fullscreen_app_active():
+    """True while a full-screen app, a D3D full-screen game or Windows
+    presentation mode owns the display - the same signal Windows uses to hold
+    back its own notifications."""
+    try:
+        state = ctypes.c_int(0)
+        if ctypes.windll.shell32.SHQueryUserNotificationState(
+                ctypes.byref(state)) != 0:
+            return False
+        # 2 QUNS_BUSY, 3 QUNS_RUNNING_D3D_FULL_SCREEN, 4 QUNS_PRESENTATION_MODE
+        return state.value in (2, 3, 4)
+    except Exception:
+        return False
+
+
+def _on_battery():
+    """True when running on battery. Holding the GPU awake costs ~32W more
+    than letting it idle, which is worth it plugged in and not worth it on
+    a battery."""
+    try:
+        class _SPS(ctypes.Structure):
+            _fields_ = [("ACLineStatus", ctypes.c_byte),
+                        ("BatteryFlag", ctypes.c_byte),
+                        ("BatteryLifePercent", ctypes.c_byte),
+                        ("SystemStatusFlag", ctypes.c_byte),
+                        ("BatteryLifeTime", ctypes.c_ulong),
+                        ("BatteryFullLifeTime", ctypes.c_ulong)]
+        s = _SPS()
+        if ctypes.windll.kernel32.GetSystemPowerStatus(ctypes.byref(s)):
+            return s.ACLineStatus == 0        # 0 offline, 1 online, 255 unknown
+    except Exception:
+        logging.exception("power status check failed")
+    return False
+
+
 class LocalASR:
     """Lazy Whisper. Loading costs seconds and ~1.6GB of disk, so it happens
     once, off the hotkey path, and only if local mode is actually used."""
@@ -670,6 +712,66 @@ class LocalASR:
             if on_status:
                 on_status("failed")
             raise last if last else RuntimeError("local ASR unavailable")
+
+    def warm(self):
+        """Wake the GPU NOW, while he is still talking.
+
+        Measured on this laptop: the 3060 idles at P8, 210MHz, 7.3W and slams
+        to P0, 1980MHz, 99.5W the instant a take is transcribed - a 92W step
+        in under a second. The panel is driven by the Intel iGPU off the same
+        chassis power budget, and that transient makes the display link
+        re-train: the screen blanks and comes back. There are no TDR events,
+        so nothing is crashing; it is purely the rate of change.
+
+        The total power is the same either way. What this buys is WHEN it
+        happens: at the start of a recording, when he is speaking and not
+        watching, instead of the moment he stops and is waiting for text.
+
+        MEASURED, so the trade is explicit:
+          cold  -> transcription steps  7.3W -> 119W  (P8, 210MHz -> P0)
+          held  -> transcription steps 35.5W -> 119W  (already P0, 1965MHz)
+        The step only shrinks by about a fifth, because the power is the
+        COMPUTE, not the clock. What it does remove completely is the
+        P8 -> P0 power-state change, and on a hybrid laptop that RTD3 wake is
+        the more likely trigger for the panel re-training than the wattage.
+
+        The cost is real: ~39W average for as long as he is recording, versus
+        7W. So it is skipped on battery, where that matters most and where the
+        screen is least likely to be the thing he is watching anyway.
+
+        A single warm does NOT work - the GPU returns to P8 about five seconds
+        after the work stops, so it is asleep again by the time he stops
+        talking. It has to be held."""
+        if self._model is None or self.device != "cuda":
+            return
+        try:
+            segs, _ = self._model.transcribe(
+                np.zeros(SAMPLE_RATE // 2, dtype=np.float32),
+                beam_size=1, vad_filter=False, language="en",
+                condition_on_previous_text=False)
+            # the generator is lazy - it must be consumed or no GPU work runs
+            for _ in segs:
+                break
+        except Exception:
+            logging.exception("gpu warm failed (harmless)")
+
+    def hold_warm(self, still_recording):
+        """Keep the GPU off deep idle for as long as the take runs."""
+        if self._model is None or self.device != "cuda":
+            return
+        if _on_battery():
+            logging.info("gpu hold skipped - on battery")
+            return
+        t0 = time.time()
+        n = 0
+        # 1.5s was measured: 3s lets it fall back to P3/P5 between pulses
+        while still_recording() and time.time() - t0 < MAX_SECONDS:
+            self.warm()
+            n += 1
+            time.sleep(1.5)
+        if n:
+            logging.info("gpu held awake for %.0fs (%d pulses)",
+                         time.time() - t0, n)
 
     def transcribe(self, audio, lang):
         """audio: float32 mono at SAMPLE_RATE. Returns text."""
@@ -1071,6 +1173,13 @@ class Engine:
         audio = None
         with self.lock:
             was = self.recording
+            # snapshot what Undo would need BEFORE the mode is reset below
+            undo_ctx = {"mode": self.mode, "lang": self.language,
+                        "ctx": getattr(self, "_app_ctx", "general"),
+                        "raw": getattr(self, "_raw_once", False),
+                        # started_at is None until the first take ever runs
+                        "secs": time.time() - (getattr(self, "started_at", None)
+                                               or time.time())}
             if was:
                 self.recording = False
                 self.level = 0.0
@@ -1090,10 +1199,46 @@ class Engine:
             self.mode = "dictate"
             self._starting = False
             self._want_stop = False
+        self._undo = None
         if audio is not None and len(audio) > SAMPLE_RATE // 2 \
                 and _speech_present(audio):
+            # Only a plain dictation or a notebook take can be undone. Command
+            # and refine act on a selection / last paste that may have moved
+            # on in the seconds since, so replaying them could edit the wrong
+            # text - worse than not offering it.
+            if undo_ctx["mode"] in ("dictate", "note"):
+                self._undo = dict(undo_ctx, audio=audio, at=time.time())
             self.on_cancelled_take(audio)
         self.on_state("idle", "Cancelled")
+
+    UNDO_WINDOW_S = 10
+
+    def undo_available(self):
+        u = getattr(self, "_undo", None)
+        return bool(u) and time.time() - u["at"] <= self.UNDO_WINDOW_S
+
+    def undo(self):
+        """Finish the take that was just cancelled, exactly as if it had not
+        been: a dictation pastes, a notebook take files. The audio was kept in
+        memory for this; the copy saved to history is separate."""
+        u, self._undo = getattr(self, "_undo", None), None
+        if not u or time.time() - u["at"] > self.UNDO_WINDOW_S or self.recording:
+            return False
+        audio = u["audio"]
+        if self.settings.get("audio_enhance", True):
+            try:
+                audio = _enhance_audio(audio)
+            except Exception:
+                logging.exception("undo: enhance failed - using raw")
+        logging.info("undo: finishing a cancelled %s take (%.0fs)",
+                     u["mode"], len(audio) / SAMPLE_RATE)
+        self.on_state("transcribing", "")
+        if u["mode"] == "note":
+            self._spawn(self._note_transcribe, audio, u["secs"], u["lang"])
+        else:
+            self._spawn(self._transcribe, audio, u["secs"], u["lang"],
+                        u["ctx"], u["raw"])
+        return True
 
     def _prewarm_mic(self):
         try:
@@ -1124,11 +1269,28 @@ class Engine:
                              args=(wav_bytes, winsound.SND_MEMORY),
                              daemon=True).start()
 
+    # A block counts as clipping only when several samples hit the rail, not
+    # one. Auto-gain mics touch full scale on single transients constantly and
+    # a single-sample test would light the warning on every plosive.
+    CLIP_LEVEL = 0.985
+    CLIP_MIN_SAMPLES = 4
+    CLIP_HOLD_S = 0.35
+
     def _audio_callback(self, indata, frames_count, time_info, status):
         if self.recording:
             self.frames.put(indata.copy())
             self.level = self._meter_level(
                 float(np.sqrt(np.mean(indata ** 2))))
+            # Too-loud is measured on the RAW signal. The meter above is
+            # auto-ranged to this microphone, so a loud voice always reads as
+            # full there - it can show "quiet" but never "clipping".
+            if int(np.count_nonzero(np.abs(indata) >= self.CLIP_LEVEL)) \
+                    >= self.CLIP_MIN_SAMPLES:
+                self._clip_until = time.time() + self.CLIP_HOLD_S
+
+    @property
+    def clipping(self):
+        return self.recording and time.time() < getattr(self, "_clip_until", 0)
 
     # Meter calibration. Raw RMS is a terrible thing to drive a meter with:
     # loudness is perceived logarithmically, and mic gain varies enormously
@@ -1163,6 +1325,18 @@ class Engine:
         self._meter_ceil = max(ceil, self.METER_CEIL_MIN)
         lo = self._meter_ceil - self.METER_RANGE_DB
         return max(0.0, min(1.0, (db - lo) / (self._meter_ceil - lo)))
+
+    def mic_name(self):
+        """The input actually in use, by name. 'System default' is resolved
+        to the real device, because that is the case where the mic silently
+        changes under you (plugging in a headset moves the default)."""
+        try:
+            idx = self._resolve_device()
+            if idx is None:
+                return sd.query_devices(kind="input")["name"]
+            return sd.query_devices(idx)["name"]
+        except Exception:
+            return ""
 
     def _resolve_device(self):
         name = self.settings.get("mic_device", "")
@@ -1260,8 +1434,12 @@ class Engine:
                 self._app_ctx = _app_context()
             else:
                 self._app_ctx = "general"
+            # The mode rides along so the bar can say WHERE this take will go.
+            # An F7 notebook take used to look identical to a normal dictation,
+            # and whether the text is about to paste into the focused field or
+            # be filed away is exactly what you want to know before letting go.
             self.on_state("recording",
-                          "command" if self.mode == "command" else "")
+                          self.mode if self.mode != "dictate" else "")
             try:
                 # ~140ms tick, played before the mic opens. Anything raising
                 # in here (winsound on a busy device, a bad mic index) used
@@ -1284,7 +1462,17 @@ class Engine:
                 return
             self.recording = True
             self._starting = False
+            self.last_paste_blind = False     # per take, never inherited
             self._start_watchdog()
+            # Move the GPU's 7W -> 100W wake-up to HERE, where he is talking,
+            # instead of the moment he stops and stares at the screen waiting.
+            # Off-thread and after the mic is already live, so it can never
+            # delay or interfere with the take itself.
+            if self.settings.get("asr_engine", "local") == "local" \
+                    and self.settings.get("gpu_hold", True):
+                threading.Thread(
+                    target=LOCAL_ASR.hold_warm,
+                    args=(lambda: self.recording,), daemon=True).start()
         # hold-to-talk: if the key was released during the ~300ms prep,
         # honor it now instead of recording forever
         if getattr(self, "_want_stop", False):
@@ -1565,11 +1753,33 @@ class Engine:
     def _cancelled(self, gen):
         return gen != self._gen
 
+    # Windows whose focus means a Ctrl+V lands nowhere: the desktop and the
+    # taskbar. Deliberately narrow - a false "it went nowhere" would tell him
+    # to paste again into a field that already got the text.
+    _BLIND_CLASSES = ("Progman", "WorkerW", "Shell_TrayWnd",
+                      "Shell_SecondaryTrayWnd")
+
+    @classmethod
+    def _paste_is_blind(cls):
+        try:
+            u = ctypes.windll.user32
+            fg = u.GetForegroundWindow()
+            if not fg:
+                return True
+            buf = ctypes.create_unicode_buffer(64)
+            u.GetClassNameW(fg, buf, 64)
+            return buf.value in cls._BLIND_CLASSES
+        except Exception:
+            return False
+
     def _insert_text(self, text):
         """Deliver text into the focused field. The transcript always lands
         in the clipboard too â€” manual Ctrl+V is the recovery path."""
         with self._clip_lock:
             pyperclip.copy(text)
+            # the bar reads this to say "copied - Ctrl+V" instead of a word
+            # count when nothing that accepts text had focus
+            self.last_paste_blind = self._paste_is_blind()
             if self.settings.get("paste_mode", "paste") == "type":
                 _send_type(text)
             else:
@@ -2314,6 +2524,15 @@ class PillApi:
     def pill_hover_out(self):
         return self._app.pill_hover_out()
 
+    def pill_undo(self):
+        return self._app.pill_undo()
+
+    def pill_copy_last(self):
+        return self._app.pill_copy_last()
+
+    def pill_snooze(self):
+        return self._app.pill_snooze()
+
 
 class DialFlow:
     """Bridges the engine to the web UI."""
@@ -2401,6 +2620,11 @@ class DialFlow:
                 self._js(self.pill_win, f"app.reckey({json.dumps(value)})")
         elif key == "chime_volume" and self.engine:
             self.engine.rebuild_chimes()
+        elif key == "mic_device" and self.engine:
+            self._js(self.pill_win,
+                     f"app.mic({json.dumps(self.engine.mic_name())})")
+        elif key == "theme":
+            self._push_pill_theme()
         elif key == "autostart":
             _apply_autostart(bool(value))
         elif key == "theme":
@@ -2780,6 +3004,7 @@ class DialFlow:
             buf = io.BytesIO()
             sf.write(buf, audio, SAMPLE_RATE, format="WAV", subtype="PCM_16")
             name = self.engine._keep_audio(buf.getvalue(), t0)
+            self._cancelled_ts = t0          # the entry an Undo replaces
             self._on_transcript({
                 "ts": t0, "lang": self.engine.language, "text": "",
                 "secs": round(len(audio) / SAMPLE_RATE, 1), "words": 0,
@@ -3293,14 +3518,103 @@ class DialFlow:
             info = getattr(self, "_engine_info", None)
             if info:
                 self._js(self.pill_win, f"app.engine({json.dumps(info)})")
+            if self.engine is not None:
+                self._js(self.pill_win,
+                         f"app.mic({json.dumps(self.engine.mic_name())})")
+            self._push_pill_theme()
         except Exception:
             logging.exception("pill_ready failed")
+
+    def _push_pill_theme(self):
+        """The bar itself stays a dark ink slab in both themes (a parchment
+        bar all but vanished on a light desktop); only the roomy panel follows
+        the theme. So the page needs to know which one is active."""
+        try:
+            dark = "true" if self._theme_is_dark() else "false"
+            self._js(self.pill_win, f"app.theme({dark})")
+        except Exception:
+            logging.exception("pill theme push failed")
+
+    # A take longer than this is not thrown away on one stray Esc. Esc is the
+    # most-pressed key on the keyboard - it closes dialogs, menus, autocomplete
+    # - and a global hook sees every press. On a short take one press is fine;
+    # on four minutes of talking it is a disaster.
+    ESC_CONFIRM_AFTER_S = 30
+    ESC_CONFIRM_WINDOW_S = 2.0
 
     def _esc_cancel(self):
         """Global Esc, gated: only a take that is actually in flight is
         touched, so this is invisible the other 99% of the time."""
-        if self.engine is not None and self._busy():
-            self.engine.cancel()
+        if self.engine is None or not self._busy():
+            return
+        eng = self.engine
+        long_take = (eng.recording and
+                     time.time() - eng.started_at > self.ESC_CONFIRM_AFTER_S)
+        if long_take:
+            armed = getattr(self, "_esc_armed_at", 0)
+            if time.time() - armed > self.ESC_CONFIRM_WINDOW_S:
+                self._esc_armed_at = time.time()
+                self._js(self.pill_win, "app.escArmed(%d)"
+                         % int(self.ESC_CONFIRM_WINDOW_S * 1000))
+                return
+        self._esc_armed_at = 0
+        eng.cancel()
+
+    def pill_undo(self):
+        """The Undo on a just-cancelled take: finish it instead."""
+        if self.engine is None or not self.engine.undo():
+            return False
+        self._pill_undo_open = False
+        ts = getattr(self, "_cancelled_ts", None)
+        if ts is not None:
+            # the take is being finished now - its "Cancelled - audio kept"
+            # entry would otherwise sit next to the real one forever
+            self.delete_entry(ts)
+            self._js(self.main_win, "app.removeEntry(%s)" % json.dumps(ts))
+            self._cancelled_ts = None
+        return True
+
+    def pill_copy_last(self):
+        """Put the last take back on the clipboard - for when the paste went
+        into the wrong window, or nowhere."""
+        text = self._last_text()
+        if not text:
+            return False
+        try:
+            pyperclip.copy(text)
+            return True
+        except Exception:
+            logging.exception("copy last failed")
+            return False
+
+    SNOOZE_S = 3600
+
+    def pill_snooze(self):
+        """'Hide for 1 hour' - for a screen share or a presentation. Only the
+        idle tab hides; a recording always shows, since recording without a
+        visible indicator is the one state that must never be silent."""
+        self._snooze_until = time.time() + self.SNOOZE_S
+        self._panel_open = False
+        logging.info("floating bar hidden for %d min", self.SNOOZE_S // 60)
+        if not self._busy():
+            try:
+                self._pill_visible = False
+                self.pill_win.hide()
+            except Exception:
+                pass
+        return True
+
+    def _unsnooze(self):
+        self._snooze_until = 0
+        if not self._busy():
+            self._show_pill_idle()
+
+    def _pill_hidden_by_policy(self):
+        """Idle tab should be off screen: snoozed, or a full-screen app /
+        presentation owns the display."""
+        if time.time() < getattr(self, "_snooze_until", 0):
+            return True
+        return bool(getattr(self, "_fullscreen_busy", False))
 
     def _busy(self):
         """Any state that owns the expanded pill â€” including the failure
@@ -3351,12 +3665,41 @@ class DialFlow:
         while the user is dragging â€” it was re-anchoring every 0.35s, which
         teleported the pill back mid-drag and meant the drop position read
         as unchanged, so it never docked anywhere new."""
+        tick = 0
+        was_hidden = False
         while not self.quitting:
             if (getattr(self, "_pill_visible", False)
                     and not getattr(self, "_pill_animating", False)
                     and not getattr(self, "_pill_dragging", False)):
                 self._move_pill()
+            tick += 1
+            if tick % 3 == 0:                        # ~1s is plenty for this
+                self._fullscreen_busy = _fullscreen_app_active()
+                hidden = self._pill_hidden_by_policy()
+                if hidden != was_hidden:
+                    was_hidden = hidden
+                    self._apply_hide_policy(hidden)
             time.sleep(0.35)
+
+    def _apply_hide_policy(self, hidden):
+        """Step the idle tab aside for a full-screen app / presentation or a
+        snooze, and bring it back after. Never touches a live take - a
+        recording must always be visible."""
+        if self.engine is None or self._busy():
+            return
+        try:
+            if hidden:
+                self._pill_visible = False
+                self.pill_win.hide()
+                logging.info("floating bar stepped aside (%s)",
+                             "full-screen app" if getattr(
+                                 self, "_fullscreen_busy", False) else "snoozed")
+            else:
+                if time.time() >= getattr(self, "_snooze_until", 0):
+                    self._snooze_until = 0
+                self._show_pill_idle()
+        except Exception:
+            logging.exception("hide policy failed")
 
     def _set_pill_corners(self, small):
         """DWM corner preference per state: ROUNDSMALL (~4px) for the resting
@@ -3498,14 +3841,29 @@ class DialFlow:
         """Design T3 timeline: flash 0-300ms â†’ contents empty while the
         window shrinks 300-500ms â†’ idle core fades in and breathes."""
         try:
-            if flash:
+            # a full-screen app or presentation owns the screen: skip the
+            # receipt entirely rather than flash it over someone's slides
+            if flash and not getattr(self, "_fullscreen_busy", False):
                 # hand the bubble what the take actually produced, so the
                 # success beat can say "42 words" instead of just blinking
+                summ = dict(getattr(self, "_last_summary", None) or {})
+                # the paste went nowhere (desktop / taskbar had focus): say
+                # the text is on the clipboard instead of a word count
+                if self.engine is not None and getattr(
+                        self.engine, "last_paste_blind", False):
+                    summ["blind"] = True
                 self._js(self.pill_win, "app.done(%s)"
-                         % json.dumps(getattr(self, "_last_summary", None)))
-                time.sleep(0.30)
+                         % json.dumps(summ or None))
+                # a blind paste stays up longer - it is an instruction to act
+                # on, not a receipt to glance at
+                time.sleep(1.6 if summ.get("blind") else 0.30)
             if self.engine is not None and self.engine.recording:
                 return  # a new recording started mid-flash â€” leave the pill
+            if self._pill_hidden_by_policy():
+                self._pill_visible = False
+                self._js(self.pill_win, "app.mode('mini')")
+                self.pill_win.hide()
+                return
             if self.settings.get("idle_pill", True):
                 self._js(self.pill_win, "app.mode('')")  # empty while moving
                 self._pill_visible = True
@@ -3523,6 +3881,8 @@ class DialFlow:
             return
         if not self.settings.get("idle_pill", True):
             return
+        if self._pill_hidden_by_policy():
+            return  # snoozed, or a full-screen app owns the screen
         if self._busy():
             return  # a take is live â€” do not shrink its HUD to a bubble
         try:
@@ -3568,7 +3928,15 @@ class DialFlow:
                     threading.Timer(0.05, self._restore_focus,
                                     args=(prev_fg,)).start()
                     threading.Timer(0.25, self._round_pill).start()
-                    self._js(self.pill_win, f"app.start({started})")
+                    self._esc_armed_at = 0
+                    self._pill_undo_open = False
+                    # where the take goes, how long it may run, and which mic
+                    # is listening - the bar shows the mic name only when it
+                    # differs from the last take's
+                    take = {"mode": detail or "dictate", "cap": MAX_SECONDS,
+                            "mic": self.engine.mic_name()}
+                    self._js(self.pill_win,
+                             f"app.start({started}, {json.dumps(take)})")
                     threading.Thread(target=self._animate_pill, args=(True,),
                                      daemon=True).start()
                 elif state in ("transcribing", "cleaning"):
@@ -3582,6 +3950,15 @@ class DialFlow:
                     self._pill_processing = False
                     self._show_pill_now()
                     threading.Thread(target=self._pill_fail, args=(detail,),
+                                     daemon=True).start()
+                elif (state == "idle" and detail == "Cancelled"
+                      and self.engine is not None
+                      and self.engine.undo_available()):
+                    # hold a "Cancelled - Undo" beat instead of vanishing: a
+                    # stray Esc or a misclick on the X should be one click to
+                    # reverse, not minutes of speech to repeat
+                    self._pill_processing = False
+                    threading.Thread(target=self._pill_cancelled,
                                      daemon=True).start()
                 elif getattr(self, "_pill_processing", False) and state == "idle":
                     # designed T3 exit: success flash â†’ empty shrink â†’ breathe.
@@ -3627,6 +4004,30 @@ class DialFlow:
         finally:
             self._pill_failing = False
 
+    def _pill_cancelled(self):
+        """Hold 'Cancelled - Undo' for the undo window, then settle. Yields
+        at once to a new recording, and ends early if Undo is clicked (the
+        engine then drives the pill through processing as normal)."""
+        self._pill_failing = True          # keeps hover-out from shrinking it
+        self._pill_undo_open = True
+        try:
+            self._animate_pill(True)
+            self._js(self.pill_win, "app.cancelled(%d)"
+                     % int(Engine.UNDO_WINDOW_S * 1000))
+            end = time.time() + Engine.UNDO_WINDOW_S
+            while time.time() < end:
+                if (self.quitting or not self._pill_undo_open
+                        or (self.engine is not None and self.engine.recording)):
+                    return
+                time.sleep(0.1)
+            self._pill_failing = False
+            self._pill_settle(False)
+        except Exception:
+            logging.exception("pill cancelled state failed")
+        finally:
+            self._pill_failing = False
+            self._pill_undo_open = False
+
     @staticmethod
     def _restore_focus(prev_hwnd):
         try:
@@ -3656,8 +4057,9 @@ class DialFlow:
         while not self.quitting:
             if self.engine is not None and self.engine.recording:
                 lv = round(self.engine.level, 4)
+                clip = "true" if self.engine.clipping else "false"
                 self._js(self.main_win, f"app.setLevel({lv})")
-                self._js(self.pill_win, f"app.level({lv})")
+                self._js(self.pill_win, f"app.level({lv}, {clip})")
                 time.sleep(0.04)
             else:
                 time.sleep(0.15)
@@ -3820,6 +4222,9 @@ class DialFlow:
                                  lambda: self._show_main(), default=True),
                 pystray.MenuItem("Check for updates",
                                  lambda: self._tray_check_update()),
+                # the way back from "Hide for 1 hour" before the hour is up
+                pystray.MenuItem("Show floating bar",
+                                 lambda: self._unsnooze()),
                 pystray.MenuItem("Quit", lambda: self._shutdown()),
             )
             self.tray = pystray.Icon("DialFlow", img,
